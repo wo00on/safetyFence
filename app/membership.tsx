@@ -5,14 +5,17 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  SafeAreaView,
   Alert,
   Modal,
   FlatList,
-  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { Calendar, Search, MapPin, X, Check } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import type { NavigationProp } from '@react-navigation/native';
 
 // 모의 요양원/보호센터 데이터
 const CARE_CENTERS = [
@@ -37,30 +40,44 @@ interface FormData {
   name: string;
   birthDate: Date | null;
   phone: string;
+  password: string;
+  confirmPassword: string;
   zipCode: string;
   address: string;
   detailAddress: string;
   isElderly: boolean;
   careCenter: CareCenter | null;
+  selectedService: "PAYPASS_SERVICE" | "CARE_SERVICE" | "ALL_SERVICE" | "NONE" | "";
 }
 
-export default function SignupScreen() {
-  const navigation = useNavigation();
+// Navigation 타입 정의
+type RootStackParamList = {
+  Signup: undefined;
+  SelectRole: undefined;
+};
+
+type SignupScreenNavigationProp = NavigationProp<RootStackParamList, 'Signup'>;
+
+const SignupPage: React.FC = () => {
+  const navigation = useNavigation<SignupScreenNavigationProp>();
   const [formData, setFormData] = useState<FormData>({
     name: "",
     birthDate: null,
     phone: "",
+    password: "",
+    confirmPassword: "",
     zipCode: "",
     address: "",
     detailAddress: "",
     isElderly: false,
     careCenter: null,
+    selectedService: "",
   });
 
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showCareCenterModal, setShowCareCenterModal] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filteredCenters, setFilteredCenters] = useState(CARE_CENTERS);
+  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
+  const [isCareCenterModalOpen, setIsCareCenterModalOpen] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [filteredCenters, setFilteredCenters] = useState<CareCenter[]>(CARE_CENTERS);
 
   // 검색어에 따라 요양원/보호센터 필터링
   useEffect(() => {
@@ -85,32 +102,19 @@ export default function SignupScreen() {
   };
 
   const searchZipCode = () => {
-    Alert.alert(
-      "우편번호 검색",
-      "실제 구현 시 다음 우편번호 API 등을 사용합니다",
-      [
-        {
-          text: "확인",
-          onPress: () => {
-            handleInputChange("zipCode", "06234");
-            handleInputChange("address", "서울특별시 강남구 테헤란로 123");
-          }
-        }
-      ]
-    );
+    Alert.alert("우편번호 검색", "우편번호 검색 기능 (실제 구현 시 다음 우편번호 API 등을 사용)");
+    // 모의 데이터로 채우기
+    handleInputChange("zipCode", "06234");
+    handleInputChange("address", "서울특별시 강남구 테헤란로 123");
   };
 
   const selectCareCenter = (center: CareCenter) => {
     handleInputChange("careCenter", center);
-    setShowCareCenterModal(false);
+    setIsCareCenterModalOpen(false);
   };
 
   const removeCareCenter = () => {
     handleInputChange("careCenter", null);
-  };
-
-  const formatDate = (date: Date) => {
-    return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
@@ -120,83 +124,115 @@ export default function SignupScreen() {
     }
   };
 
-  const isFormValid = () => {
+  const formatDate = (date: Date | null): string => {
+    if (!date) return "생년월일을 선택하세요";
+    return `${date.getFullYear()}년 ${(date.getMonth() + 1).toString().padStart(2, '0')}월 ${date.getDate().toString().padStart(2, '0')}일`;
+  };
+
+  const isFormValid = (): boolean => {
     const requiredFields = [
       formData.name,
       formData.birthDate,
       formData.phone,
+      formData.password,
+      formData.confirmPassword,
       formData.zipCode,
       formData.address,
       formData.detailAddress,
+      formData.selectedService,
     ];
 
     const basicFieldsValid = requiredFields.every((field) => 
       field && field.toString().trim() !== ""
     );
 
+    const passwordsMatch = formData.password === formData.confirmPassword;
+
     if (formData.isElderly) {
-      return basicFieldsValid && formData.careCenter !== null;
+      return basicFieldsValid && passwordsMatch && formData.careCenter !== null;
     }
 
-    return basicFieldsValid;
+    return basicFieldsValid && passwordsMatch;
   };
 
   const handleSubmit = () => {
     if (isFormValid()) {
       console.log("회원가입 데이터:", formData);
-      // 회원가입 완료 후 역할 선택 페이지로 이동
-      navigation.navigate('SelectRole' as never);
+      Alert.alert(
+        "회원가입 완료", 
+        "회원가입이 성공적으로 완료되었습니다!",
+        [
+          {
+            text: "확인",
+            onPress: () => navigation.navigate('SelectRole')
+          }
+        ]
+      );
+    } else {
+      Alert.alert("오류", "모든 필수 항목을 입력해주세요.");
     }
   };
 
-  const renderCareCenterItem = ({ item }: { item: CareCenter }) => (
-    <TouchableOpacity
-      className="p-4 border-b border-gray-200"
-      onPress={() => selectCareCenter(item)}
+  const CheckboxItem: React.FC<{
+    id: string;
+    checked: boolean;
+    onPress: () => void;
+    label: string;
+  }> = ({ checked, onPress, label }) => (
+    <TouchableOpacity 
+      className="flex-row items-center py-2" 
+      onPress={onPress}
     >
-      <View className="flex-row items-center justify-between">
-        <View className="flex-1">
-          <View className="flex-row items-center">
-            <Text className="text-base font-medium text-gray-900">{item.name}</Text>
-            <View className="ml-2 px-2 py-1 bg-blue-100 rounded">
-              <Text className="text-xs text-blue-800">{item.type}</Text>
-            </View>
-          </View>
-          <View className="flex-row items-center mt-1">
-            <Ionicons name="location-outline" size={12} color="#6B7280" />
-            <Text className="text-sm text-gray-500 ml-1">{item.address}</Text>
-          </View>
-        </View>
+      <View className={`w-5 h-5 border-2 rounded mr-3 items-center justify-center ${
+        checked ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
+      }`}>
+        {checked && <Check size={12} color="white" />}
       </View>
+      <Text className="text-sm font-medium text-gray-700 flex-1">{label}</Text>
     </TouchableOpacity>
+  );
+
+  const ServiceCheckboxItem: React.FC<{
+    service: string;
+    label: string;
+  }> = ({ service, label }) => (
+    <CheckboxItem
+      id={service}
+      checked={formData.selectedService === service}
+      onPress={() => handleInputChange("selectedService", service)}
+      label={label}
+    />
   );
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <ScrollView className="flex-1 px-4 py-6">
-        <View className="max-w-2xl mx-auto w-full">
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        className="flex-1"
+      >
+        <ScrollView className="flex-1 px-4 py-6">
           {/* 헤더 */}
-          <View className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <View className="bg-white rounded-xl p-6 mb-6 shadow-sm">
             <Text className="text-2xl font-bold text-gray-900 text-center mb-2">
               회원가입
             </Text>
-            <Text className="text-gray-600 text-center">
+            <Text className="text-gray-500 text-center">
               서비스 이용을 위해 정보를 입력해주세요
             </Text>
           </View>
 
-          {/* 폼 */}
-          <View className="bg-white rounded-lg shadow-sm p-6">
+          <View className="bg-white rounded-xl p-6 shadow-sm">
             {/* 이름 */}
             <View className="mb-6">
               <Text className="text-sm font-medium text-gray-700 mb-2">
                 이름 <Text className="text-red-500">*</Text>
               </Text>
               <TextInput
-                className="w-full p-3 border border-gray-300 rounded-md bg-white"
+                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900"
                 placeholder="이름을 입력하세요"
                 value={formData.name}
                 onChangeText={(text) => handleInputChange("name", text)}
+                placeholderTextColor="#9CA3AF"
               />
             </View>
 
@@ -206,15 +242,15 @@ export default function SignupScreen() {
                 생년월일 <Text className="text-red-500">*</Text>
               </Text>
               <TouchableOpacity
-                className="w-full p-3 border border-gray-300 rounded-md bg-white flex-row items-center"
+                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 flex-row items-center"
                 onPress={() => setShowDatePicker(true)}
               >
-                <Ionicons name="calendar-outline" size={16} color="#6B7280" />
-                <Text className={`ml-2 ${formData.birthDate ? 'text-gray-900' : 'text-gray-500'}`}>
-                  {formData.birthDate ? formatDate(formData.birthDate) : '생년월일을 선택하세요'}
+                <Calendar size={16} color="#6B7280" className="mr-2" />
+                <Text className={`flex-1 ${formData.birthDate ? 'text-gray-900' : 'text-gray-500'}`}>
+                  {formatDate(formData.birthDate)}
                 </Text>
               </TouchableOpacity>
-              
+
               {showDatePicker && (
                 <DateTimePicker
                   value={formData.birthDate || new Date()}
@@ -233,12 +269,46 @@ export default function SignupScreen() {
                 전화번호 <Text className="text-red-500">*</Text>
               </Text>
               <TextInput
-                className="w-full p-3 border border-gray-300 rounded-md bg-white"
+                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900"
                 placeholder="010-0000-0000"
                 value={formData.phone}
                 onChangeText={(text) => handleInputChange("phone", text)}
                 keyboardType="phone-pad"
+                placeholderTextColor="#9CA3AF"
               />
+            </View>
+
+            {/* 비밀번호 */}
+            <View className="mb-6">
+              <Text className="text-sm font-medium text-gray-700 mb-2">
+                비밀번호 <Text className="text-red-500">*</Text>
+              </Text>
+              <TextInput
+                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900"
+                placeholder="비밀번호를 입력하세요"
+                value={formData.password}
+                onChangeText={(text) => handleInputChange("password", text)}
+                secureTextEntry
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            {/* 비밀번호 확인 */}
+            <View className="mb-6">
+              <Text className="text-sm font-medium text-gray-700 mb-2">
+                비밀번호 확인 <Text className="text-red-500">*</Text>
+              </Text>
+              <TextInput
+                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900"
+                placeholder="비밀번호를 다시 입력하세요"
+                value={formData.confirmPassword}
+                onChangeText={(text) => handleInputChange("confirmPassword", text)}
+                secureTextEntry
+                placeholderTextColor="#9CA3AF"
+              />
+              {formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                <Text className="text-xs text-red-600 mt-1">비밀번호가 일치하지 않습니다</Text>
+              )}
             </View>
 
             {/* 주소 */}
@@ -250,41 +320,47 @@ export default function SignupScreen() {
               {/* 우편번호 */}
               <View className="flex-row mb-3">
                 <TextInput
-                  className="flex-1 p-3 border border-gray-300 rounded-md bg-gray-100 mr-2"
+                  className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 mr-2"
                   placeholder="우편번호"
                   value={formData.zipCode}
+                  onChangeText={(text) => handleInputChange("zipCode", text)}
                   editable={false}
+                  placeholderTextColor="#9CA3AF"
                 />
                 <TouchableOpacity
-                  className="px-4 py-3 bg-white border border-gray-300 rounded-md flex-row items-center"
+                  className="bg-gray-200 border border-gray-300 rounded-lg px-4 py-3 flex-row items-center"
                   onPress={searchZipCode}
                 >
-                  <Ionicons name="search-outline" size={16} color="#6B7280" />
-                  <Text className="text-gray-700 ml-1">검색</Text>
+                  <Search size={16} color="#374151" className="mr-1" />
+                  <Text className="text-gray-700 font-medium">검색</Text>
                 </TouchableOpacity>
               </View>
 
               {/* 기본주소 */}
               <TextInput
-                className="w-full p-3 border border-gray-300 rounded-md bg-gray-100 mb-3"
+                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 mb-3"
                 placeholder="기본주소"
                 value={formData.address}
+                onChangeText={(text) => handleInputChange("address", text)}
                 editable={false}
+                placeholderTextColor="#9CA3AF"
               />
 
               {/* 상세주소 */}
               <TextInput
-                className="w-full p-3 border border-gray-300 rounded-md bg-white"
+                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900"
                 placeholder="상세주소를 입력하세요"
                 value={formData.detailAddress}
                 onChangeText={(text) => handleInputChange("detailAddress", text)}
+                placeholderTextColor="#9CA3AF"
               />
             </View>
 
             {/* 이용자 구분 */}
             <View className="mb-6">
-              <TouchableOpacity
-                className="flex-row items-center mb-4"
+              <CheckboxItem
+                id="elderly"
+                checked={formData.isElderly}
                 onPress={() => {
                   const newValue = !formData.isElderly;
                   handleInputChange("isElderly", newValue);
@@ -292,56 +368,48 @@ export default function SignupScreen() {
                     handleInputChange("careCenter", null);
                   }
                 }}
-              >
-                <View className={`w-5 h-5 border-2 rounded mr-3 items-center justify-center ${
-                  formData.isElderly ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
-                }`}>
-                  {formData.isElderly && (
-                    <Ionicons name="checkmark" size={12} color="white" />
-                  )}
-                </View>
-                <Text className="text-sm font-medium text-gray-700">
-                  노인 이용자입니다
-                </Text>
-              </TouchableOpacity>
+                label="노인 이용자입니다"
+              />
 
               {/* 요양원/보호센터 정보 */}
               {formData.isElderly && (
-                <View className="pl-6 border-l-2 border-blue-200">
+                <View className="ml-8 mt-4 p-4 border-l-2 border-blue-200 bg-blue-50 rounded-r-lg">
                   <Text className="text-sm font-medium text-gray-700 mb-2">
                     요양원/보호센터 <Text className="text-red-500">*</Text>
                   </Text>
 
                   {formData.careCenter ? (
-                    <View className="p-3 border border-gray-200 rounded-md bg-gray-50 relative">
-                      <View className="flex-row items-center justify-between">
-                        <View className="flex-1">
-                          <View className="flex-row items-center">
-                            <Text className="font-medium text-gray-900">{formData.careCenter.name}</Text>
-                            <View className="ml-2 px-2 py-1 bg-blue-100 rounded">
-                              <Text className="text-xs text-blue-800">{formData.careCenter.type}</Text>
-                            </View>
-                          </View>
-                          <View className="flex-row items-center mt-1">
-                            <Ionicons name="location-outline" size={12} color="#6B7280" />
-                            <Text className="text-sm text-gray-500 ml-1">{formData.careCenter.address}</Text>
-                          </View>
+                    <View className="bg-white p-4 border border-gray-200 rounded-lg">
+                      <View className="flex-row justify-between items-start mb-2">
+                        <Text className="font-medium text-gray-900 flex-1">
+                          {formData.careCenter.name}
+                        </Text>
+                        <View className="bg-blue-100 px-2 py-1 rounded">
+                          <Text className="text-xs text-blue-800">
+                            {formData.careCenter.type}
+                          </Text>
                         </View>
-                        <TouchableOpacity
-                          className="p-1"
-                          onPress={removeCareCenter}
-                        >
-                          <Ionicons name="close" size={20} color="#6B7280" />
-                        </TouchableOpacity>
                       </View>
+                      <View className="flex-row items-center mb-2">
+                        <MapPin size={12} color="#6B7280" className="mr-1" />
+                        <Text className="text-sm text-gray-500 flex-1">
+                          {formData.careCenter.address}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        className="absolute top-2 right-2"
+                        onPress={removeCareCenter}
+                      >
+                        <X size={16} color="#6B7280" />
+                      </TouchableOpacity>
                     </View>
                   ) : (
                     <TouchableOpacity
-                      className="w-full p-3 border border-gray-300 rounded-md bg-white flex-row items-center justify-between"
-                      onPress={() => setShowCareCenterModal(true)}
+                      className="bg-white border border-gray-200 rounded-lg px-4 py-3 flex-row items-center justify-between"
+                      onPress={() => setIsCareCenterModalOpen(true)}
                     >
                       <Text className="text-gray-500">요양원/보호센터를 검색하세요</Text>
-                      <Ionicons name="search-outline" size={16} color="#6B7280" />
+                      <Search size={16} color="#6B7280" />
                     </TouchableOpacity>
                   )}
 
@@ -354,12 +422,35 @@ export default function SignupScreen() {
               )}
             </View>
 
+            {/* 서비스 선택 */}
+            <View className="mb-6">
+              <Text className="text-sm font-medium text-gray-700 mb-4">
+                이용 서비스 선택 <Text className="text-red-500">*</Text>
+              </Text>
+              <View className="space-y-2">
+                <ServiceCheckboxItem
+                  service="PAYPASS_SERVICE"
+                  label="PAYPASS_SERVICE (결제 서비스)"
+                />
+                <ServiceCheckboxItem
+                  service="CARE_SERVICE"
+                  label="CARE_SERVICE (돌봄 서비스)"
+                />
+                <ServiceCheckboxItem
+                  service="ALL_SERVICE"
+                  label="ALL_SERVICE (전체 서비스)"
+                />
+                <ServiceCheckboxItem
+                  service="NONE"
+                  label="NONE (서비스 미선택)"
+                />
+              </View>
+            </View>
+
             {/* 회원가입 버튼 */}
             <TouchableOpacity
-              className={`w-full py-4 rounded-md ${
-                isFormValid() 
-                  ? 'bg-blue-600' 
-                  : 'bg-gray-300'
+              className={`rounded-lg py-4 px-6 ${
+                isFormValid() ? 'bg-blue-600 active:bg-blue-700' : 'bg-gray-300'
               }`}
               onPress={handleSubmit}
               disabled={!isFormValid()}
@@ -371,52 +462,110 @@ export default function SignupScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
 
-      {/* 요양원/보호센터 검색 모달 */}
-      <Modal
-        visible={showCareCenterModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <SafeAreaView className="flex-1 bg-white">
-          <View className="flex-1">
-            {/* 모달 헤더 */}
-            <View className="flex-row items-center justify-between p-4 border-b border-gray-200">
-              <Text className="text-lg font-semibold">요양원/보호센터 검색</Text>
-              <TouchableOpacity onPress={() => setShowCareCenterModal(false)}>
-                <Ionicons name="close" size={24} color="#6B7280" />
+        {/* 요양원/보호센터 검색 모달 */}
+        <Modal
+          visible={isCareCenterModalOpen}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsCareCenterModalOpen(false)}
+        >
+          <View className="flex-1 bg-black/50 justify-center items-center">
+            <View className="bg-white rounded-xl m-4 p-6 max-h-96 w-full max-w-md">
+              <Text className="text-xl font-bold text-gray-900 mb-4">
+                요양원/보호센터 검색
+              </Text>
+              
+              <TextInput
+                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4"
+                placeholder="이름 또는 주소로 검색"
+                value={searchTerm}
+                onChangeText={setSearchTerm}
+                placeholderTextColor="#9CA3AF"
+              />
+
+              <FlatList
+                data={filteredCenters}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    className="p-3 border-b border-gray-100"
+                    onPress={() => selectCareCenter(item)}
+                  >
+                    <View className="flex-row items-center justify-between mb-1">
+                      <Text className="font-medium text-gray-900 flex-1">
+                        {item.name}
+                      </Text>
+                      <View className="bg-blue-100 px-2 py-1 rounded">
+                        <Text className="text-xs text-blue-800">{item.type}</Text>
+                      </View>
+                    </View>
+                    <View className="flex-row items-center">
+                      <MapPin size={12} color="#6B7280" className="mr-1" />
+                      <Text className="text-sm text-gray-500 flex-1">
+                        {item.address}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+                ListEmptyComponent={
+                  <Text className="text-center text-gray-500 py-4">
+                    검색 결과가 없습니다
+                  </Text>
+                }
+              />
+
+              <TouchableOpacity
+                className="bg-gray-200 rounded-lg py-3 mt-4"
+                onPress={() => setIsCareCenterModalOpen(false)}
+              >
+                <Text className="text-center text-gray-700 font-medium">닫기</Text>
               </TouchableOpacity>
             </View>
-
-            {/* 검색 입력 */}
-            <View className="p-4 border-b border-gray-200">
-              <View className="flex-row items-center bg-gray-100 rounded-md px-3 py-2">
-                <Ionicons name="search-outline" size={16} color="#6B7280" />
-                <TextInput
-                  className="flex-1 ml-2 text-base"
-                  placeholder="이름 또는 주소로 검색"
-                  value={searchTerm}
-                  onChangeText={setSearchTerm}
-                />
-              </View>
-            </View>
-
-            {/* 검색 결과 */}
-            <FlatList
-              data={filteredCenters}
-              renderItem={renderCareCenterItem}
-              keyExtractor={(item) => item.id.toString()}
-              ListEmptyComponent={
-                <View className="p-8 items-center">
-                  <Text className="text-gray-500">검색 결과가 없습니다</Text>
-                </View>
-              }
-            />
           </View>
-        </SafeAreaView>
-      </Modal>
+        </Modal>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
+};
+
+export default SignupPage;
+
+// 필요한 패키지 설치:
+// npm install @react-native-community/datetimepicker
+// npm install react-native-vector-icons
+// npm install lucide-react-native
+// npm install nativewind tailwindcss
+// npm install @react-navigation/native @react-navigation/stack
+// npx pod-install (iOS만 해당)
+
+// App.tsx 또는 네비게이션 설정 예시:
+/*
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import SignupPage from './SignupPage';
+import SelectRolePage from './SelectRolePage'; // 이 컴포넌트도 생성 필요
+
+const Stack = createStackNavigator();
+
+export default function App() {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="Signup">
+        <Stack.Screen 
+          name="Signup" 
+          component={SignupPage} 
+          options={{ title: '회원가입' }}
+        />
+        <Stack.Screen 
+          name="SelectRole" 
+          component={SelectRolePage} 
+          options={{ title: '역할 선택' }}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
 }
+*/

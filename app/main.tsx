@@ -1,684 +1,533 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   TextInput,
-  Alert,
-  Dimensions,
+  TouchableOpacity,
+  ScrollView,
   SafeAreaView,
-  StatusBar,
+  Alert,
+  Modal,
+  FlatList,
+  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import {
-  MapPin,
-  User,
-  Bell,
-  Search,
-  Filter,
-  Users,
-  BarChart,
-  X,
-  Navigation,
-  Locate,
-} from 'lucide-react-native';
+import { Calendar, Search, MapPin, X, Check } from 'lucide-react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useNavigation } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
 
-const { width, height } = Dimensions.get('window');
-
-// 맞춤형 지도 스타일
-const customMapStyle = [
-  {
-    featureType: 'all',
-    elementType: 'geometry',
-    stylers: [
-      {
-        color: '#f5f5f7'
-      }
-    ]
-  },
-  {
-    featureType: 'all',
-    elementType: 'labels.text.fill',
-    stylers: [
-      {
-        color: '#616161'
-      }
-    ]
-  },
-  {
-    featureType: 'all',
-    elementType: 'labels.text.stroke',
-    stylers: [
-      {
-        color: '#f5f5f5'
-      }
-    ]
-  },
-  {
-    featureType: 'administrative.land_parcel',
-    elementType: 'labels.text.fill',
-    stylers: [
-      {
-        color: '#bdbdbd'
-      }
-    ]
-  },
-  {
-    featureType: 'poi',
-    elementType: 'geometry',
-    stylers: [
-      {
-        color: '#eeeeee'
-      }
-    ]
-  },
-  {
-    featureType: 'poi',
-    elementType: 'labels.text.fill',
-    stylers: [
-      {
-        color: '#757575'
-      }
-    ]
-  },
-  {
-    featureType: 'poi.park',
-    elementType: 'geometry',
-    stylers: [
-      {
-        color: '#e5f3e5'
-      }
-    ]
-  },
-  {
-    featureType: 'poi.park',
-    elementType: 'labels.text.fill',
-    stylers: [
-      {
-        color: '#4a7c59'
-      }
-    ]
-  },
-  {
-    featureType: 'road',
-    elementType: 'geometry',
-    stylers: [
-      {
-        color: '#ffffff'
-      }
-    ]
-  },
-  {
-    featureType: 'road.arterial',
-    elementType: 'labels.text.fill',
-    stylers: [
-      {
-        color: '#757575'
-      }
-    ]
-  },
-  {
-    featureType: 'road.highway',
-    elementType: 'geometry',
-    stylers: [
-      {
-        color: '#dadada'
-      }
-    ]
-  },
-  {
-    featureType: 'road.highway',
-    elementType: 'labels.text.fill',
-    stylers: [
-      {
-        color: '#616161'
-      }
-    ]
-  },
-  {
-    featureType: 'road.local',
-    elementType: 'labels.text.fill',
-    stylers: [
-      {
-        color: '#9e9e9e'
-      }
-    ]
-  },
-  {
-    featureType: 'transit.line',
-    elementType: 'geometry',
-    stylers: [
-      {
-        color: '#e6e5e5'
-      }
-    ]
-  },
-  {
-    featureType: 'transit.station',
-    elementType: 'geometry',
-    stylers: [
-      {
-        color: '#eeeeee'
-      }
-    ]
-  },
-  {
-    featureType: 'water',
-    elementType: 'geometry',
-    stylers: [
-      {
-        color: '#c9e6f0'
-      }
-    ]
-  },
-  {
-    featureType: 'water',
-    elementType: 'labels.text.fill',
-    stylers: [
-      {
-        color: '#4a7c59'
-      }
-    ]
-  }
+// 모의 요양원/보호센터 데이터
+const CARE_CENTERS = [
+  { id: 1, name: "행복한 요양원", address: "서울특별시 강남구 테헤란로 123", type: "요양원" },
+  { id: 2, name: "건강한 노인복지센터", address: "서울특별시 서초구 서초대로 456", type: "복지센터" },
+  { id: 3, name: "편안한 주야간보호센터", address: "서울특별시 송파구 올림픽로 789", type: "주야간보호센터" },
+  { id: 4, name: "사랑의 요양원", address: "서울특별시 강동구 천호대로 101", type: "요양원" },
+  { id: 5, name: "희망 노인복지센터", address: "서울특별시 마포구 양화로 202", type: "복지센터" },
+  { id: 6, name: "미소 주야간보호센터", address: "서울특별시 영등포구 여의대로 303", type: "주야간보호센터" },
+  { id: 7, name: "햇살 요양원", address: "서울특별시 용산구 이태원로 404", type: "요양원" },
+  { id: 8, name: "푸른 노인복지센터", address: "서울특별시 종로구 종로 505", type: "복지센터" },
 ];
 
-// 타입 정의
 interface CareCenter {
   id: number;
   name: string;
   address: string;
   type: string;
-  lat: number;
-  lng: number;
-  phone: string;
-  rating: number;
 }
 
-interface UserLocation {
-  lat: number;
-  lng: number;
+interface FormData {
   name: string;
-  status: string;
+  birthDate: Date | null;
+  phone: string;
+  password: string;
+  confirmPassword: string;
+  zipCode: string;
+  address: string;
+  detailAddress: string;
+  isElderly: boolean;
+  careCenter: CareCenter | null;
+  selectedService: "PAYPASS_SERVICE" | "CARE_SERVICE" | "ALL_SERVICE" | "NONE" | "";
 }
 
-interface UserLocations {
-  [key: string]: UserLocation;
-}
-
-type UserRole = 'user' | 'caregiver' | null;
-
-// 모의 요양원/보호센터 데이터
-const CARE_CENTERS: CareCenter[] = [
-  {
-    id: 1,
-    name: '행복한 요양원',
-    address: '서울특별시 강남구 테헤란로 123',
-    type: '요양원',
-    lat: 37.5665,
-    lng: 126.978,
-    phone: '02-1234-5678',
-    rating: 4.5,
-  },
-  {
-    id: 2,
-    name: '건강한 노인복지센터',
-    address: '서울특별시 서초구 서초대로 456',
-    type: '복지센터',
-    lat: 37.4979,
-    lng: 127.0276,
-    phone: '02-2345-6789',
-    rating: 4.2,
-  },
-  {
-    id: 3,
-    name: '편안한 주야간보호센터',
-    address: '서울특별시 송파구 올림픽로 789',
-    type: '주야간보호센터',
-    lat: 37.5145,
-    lng: 127.1059,
-    phone: '02-3456-7890',
-    rating: 4.7,
-  },
-];
-
-// 모의 이용자 위치 데이터
-const USER_LOCATIONS: UserLocations = {
-  '1': { lat: 37.5665, lng: 126.978, name: '김할머니', status: 'active' },
+// Navigation 타입 정의
+type RootStackParamList = {
+  Signup: undefined;
+  SelectRole: undefined;
 };
 
-interface MainPageProps {}
+type SignupScreenNavigationProp = NavigationProp<RootStackParamList, 'Signup'>;
 
-const MainPage: React.FC<MainPageProps> = () => {
-  const navigation = useNavigation();
-  const route = useRoute();
-  const params = route.params as { userId?: string } | undefined;
-  const userId = params?.userId || '1';
+const SignupPage: React.FC = () => {
+  const navigation = useNavigation<SignupScreenNavigationProp>();
+  const [formData, setFormData] = useState<FormData>({
+    name: "",
+    birthDate: null,
+    phone: "",
+    password: "",
+    confirmPassword: "",
+    zipCode: "",
+    address: "",
+    detailAddress: "",
+    isElderly: false,
+    careCenter: null,
+    selectedService: "",
+  });
 
-  const mapRef = useRef<MapView>(null);
-  const [selectedCenter, setSelectedCenter] = useState<CareCenter | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [userRole, setUserRole] = useState<UserRole>(null);
+  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
+  const [isCareCenterModalOpen, setIsCareCenterModalOpen] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [filteredCenters, setFilteredCenters] = useState<CareCenter[]>(CARE_CENTERS);
 
-  // 사용자 역할 확인
+  // 검색어에 따라 요양원/보호센터 필터링
   useEffect(() => {
-    const getUserRole = async () => {
-      try {
-        const role = await AsyncStorage.getItem('userRole') as UserRole;
-        setUserRole(role);
-      } catch (error) {
-        console.error('역할 가져오기 실패:', error);
-      }
-    };
-    getUserRole();
-  }, []);
+    if (searchTerm.trim() === "") {
+      setFilteredCenters(CARE_CENTERS);
+    } else {
+      const filtered = CARE_CENTERS.filter(
+        (center) =>
+          center.name.includes(searchTerm) || 
+          center.address.includes(searchTerm) || 
+          center.type.includes(searchTerm)
+      );
+      setFilteredCenters(filtered);
+    }
+  }, [searchTerm]);
 
-  const handleSearch = (): void => {
-    console.log('검색어:', searchQuery);
-    Alert.alert('검색', `"${searchQuery}" 검색 결과를 찾고 있습니다.`);
+  const handleInputChange = (field: keyof FormData, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
-  const handleCenterPress = (center: CareCenter): void => {
-    setSelectedCenter(center);
-    mapRef.current?.animateToRegion({
-      latitude: center.lat,
-      longitude: center.lng,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
-    });
+  const searchZipCode = () => {
+    Alert.alert("우편번호 검색", "우편번호 검색 기능 (실제 구현 시 다음 우편번호 API 등을 사용)");
+    // 모의 데이터로 채우기
+    handleInputChange("zipCode", "06234");
+    handleInputChange("address", "서울특별시 강남구 테헤란로 123");
   };
 
-  const handleCenterDetail = (): void => {
-    if (selectedCenter) {
-      Alert.alert('상세 정보', `${selectedCenter.name}의 상세 정보를 표시합니다.`);
+  const selectCareCenter = (center: CareCenter) => {
+    handleInputChange("careCenter", center);
+    setIsCareCenterModalOpen(false);
+  };
+
+  const removeCareCenter = () => {
+    handleInputChange("careCenter", null);
+  };
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      handleInputChange("birthDate", selectedDate);
     }
   };
 
-  const navigateToScreen = (screenName: string): void => {
-    navigation.navigate(screenName as never);
+  const formatDate = (date: Date | null): string => {
+    if (!date) return "생년월일을 선택하세요";
+    return `${date.getFullYear()}년 ${(date.getMonth() + 1).toString().padStart(2, '0')}월 ${date.getDate().toString().padStart(2, '0')}일`;
   };
 
-  // 내 위치로 이동하는 함수
-  const moveToMyLocation = (): void => {
-    const userLocation = USER_LOCATIONS[userId] || { lat: 37.5665, lng: 126.978, name: '사용자', status: 'active' };
-    
-    mapRef.current?.animateToRegion({
-      latitude: userLocation.lat,
-      longitude: userLocation.lng,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
-    }, 1000);
-  };
+  const isFormValid = (): boolean => {
+    const requiredFields = [
+      formData.name,
+      formData.birthDate,
+      formData.phone,
+      formData.password,
+      formData.confirmPassword,
+      formData.zipCode,
+      formData.address,
+      formData.detailAddress,
+      formData.selectedService,
+    ];
 
-  // 이용자 위치 가져오기
-  const userLocation = USER_LOCATIONS[userId] || { lat: 37.5665, lng: 126.978, name: '사용자', status: 'active' };
-
-  // 지도 영역
-  const region = {
-    latitude: userLocation.lat,
-    longitude: userLocation.lng,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
-  };
-
-  // 이용자인 경우 UI
-  if (userRole === 'user') {
-    return (
-      <SafeAreaView className="flex-1 bg-gray-50">
-        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-        
-        {/* 상단 헤더 */}
-        <View className="bg-white shadow-lg p-6">
-          <View className="items-center">
-            <Text className="text-2xl font-bold text-gray-900 mb-1">내 위치</Text>
-            <Text className="text-sm text-gray-500">현재 위치를 확인하세요</Text>
-          </View>
-        </View>
-
-        {/* 지도 영역 */}
-        <View className="flex-1 relative">
-          <MapView
-            ref={mapRef}
-            provider={PROVIDER_GOOGLE}
-            style={{ flex: 1 }}
-            initialRegion={region}
-            customMapStyle={customMapStyle}
-            showsUserLocation={false}
-            showsMyLocationButton={false}
-            showsCompass={false}
-            toolbarEnabled={false}
-          >
-            <Marker
-              coordinate={{
-                latitude: userLocation.lat,
-                longitude: userLocation.lng,
-              }}
-              title="내 위치"
-              description="현재 위치"
-            >
-              <View className="items-center">
-                <View className="bg-blue-500 p-3 rounded-full shadow-lg border-4 border-white">
-                  <Navigation size={20} color="white" />
-                </View>
-                <View className="mt-1 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-200">
-                  <Text className="text-xs font-medium text-gray-700">{userLocation.name}</Text>
-                </View>
-              </View>
-            </Marker>
-          </MapView>
-
-          {/* 내 위치 버튼 */}
-          <TouchableOpacity
-            className="absolute bottom-32 right-4 bg-white p-4 rounded-full shadow-lg border border-gray-200"
-            onPress={moveToMyLocation}
-            style={{
-              elevation: 8,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.15,
-              shadowRadius: 8,
-            }}
-          >
-            <Locate size={24} color="#2563eb" />
-          </TouchableOpacity>
-        </View>
-
-        {/* 하단 네비게이션 - 이용자용 */}
-        <View className="bg-white border-t border-gray-100 px-4 py-2" 
-          style={{
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 8,
-            elevation: 8,
-          }}
-        >
-          <View className="flex-row justify-center space-x-12">
-            <TouchableOpacity className="items-center py-3 px-4">
-              <View className="bg-blue-50 p-2 rounded-full">
-                <MapPin size={24} color="#2563eb" />
-              </View>
-              <Text className="text-xs text-blue-600 mt-2 font-medium">지도</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              className="items-center py-3 px-4"
-              onPress={() => navigateToScreen('Log')}
-            >
-              <View className="bg-gray-50 p-2 rounded-full">
-                <BarChart size={24} color="#6b7280" />
-              </View>
-              <Text className="text-xs text-gray-600 mt-2">로그</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              className="items-center py-3 px-4"
-              onPress={() => navigateToScreen('MyPage')}
-            >
-              <View className="bg-gray-50 p-2 rounded-full">
-                <User size={24} color="#6b7280" />
-              </View>
-              <Text className="text-xs text-gray-600 mt-2">마이페이지</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </SafeAreaView>
+    const basicFieldsValid = requiredFields.every((field) => 
+      field && field.toString().trim() !== ""
     );
-  }
 
-  // 보호자인 경우 UI
+    const passwordsMatch = formData.password === formData.confirmPassword;
+
+    if (formData.isElderly) {
+      return basicFieldsValid && passwordsMatch && formData.careCenter !== null;
+    }
+
+    return basicFieldsValid && passwordsMatch;
+  };
+
+  const handleSubmit = () => {
+    if (isFormValid()) {
+      console.log("회원가입 데이터:", formData);
+      Alert.alert(
+        "회원가입 완료", 
+        "회원가입이 성공적으로 완료되었습니다!",
+        [
+          {
+            text: "확인",
+            onPress: () => navigation.navigate('SelectRole')
+          }
+        ]
+      );
+    } else {
+      Alert.alert("오류", "모든 필수 항목을 입력해주세요.");
+    }
+  };
+
+  const CheckboxItem: React.FC<{
+    id: string;
+    checked: boolean;
+    onPress: () => void;
+    label: string;
+  }> = ({ checked, onPress, label }) => (
+    <TouchableOpacity 
+      className="flex-row items-center py-2" 
+      onPress={onPress}
+    >
+      <View className={`w-5 h-5 border-2 rounded mr-3 items-center justify-center ${
+        checked ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
+      }`}>
+        {checked && <Check size={12} color="white" />}
+      </View>
+      <Text className="text-sm font-medium text-gray-700 flex-1">{label}</Text>
+    </TouchableOpacity>
+  );
+
+  const ServiceCheckboxItem: React.FC<{
+    service: string;
+    label: string;
+  }> = ({ service, label }) => (
+    <CheckboxItem
+      id={service}
+      checked={formData.selectedService === service}
+      onPress={() => handleInputChange("selectedService", service)}
+      label={label}
+    />
+  );
+
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
-      {/* 상단 검색 바 */}
-      <View className="bg-white shadow-lg px-4 py-6">
-        <View className="flex-row items-center space-x-3">
-          <View className="flex-1 relative">
-            <View className="absolute left-4 top-4 z-10">
-              <Search size={18} color="#9ca3af" />
-            </View>
-            <TextInput
-              className="bg-gray-50 rounded-2xl pl-12 pr-4 py-4 text-gray-900 border border-gray-100"
-              placeholder="요양원, 보호센터 검색..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              onSubmitEditing={handleSearch}
-              returnKeyType="search"
-              style={{
-                fontSize: 16,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.05,
-                shadowRadius: 2,
-                elevation: 2,
-              }}
-            />
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        className="flex-1"
+      >
+        <ScrollView className="flex-1 px-4 py-6">
+          {/* 헤더 */}
+          <View className="bg-white rounded-xl p-6 mb-6 shadow-sm">
+            <Text className="text-2xl font-bold text-gray-900 text-center mb-2">
+              회원가입
+            </Text>
+            <Text className="text-gray-500 text-center">
+              서비스 이용을 위해 정보를 입력해주세요
+            </Text>
           </View>
-          
-          <TouchableOpacity
-            className="bg-blue-600 px-6 py-4 rounded-2xl"
-            onPress={handleSearch}
-            style={{
-              shadowColor: '#2563eb',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.2,
-              shadowRadius: 4,
-              elevation: 4,
-            }}
-          >
-            <Text className="text-white font-semibold">검색</Text>
-          </TouchableOpacity>
 
-          <TouchableOpacity 
-            className="border border-gray-200 p-4 rounded-2xl bg-white"
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.05,
-              shadowRadius: 2,
-              elevation: 2,
-            }}
-          >
-            <Filter size={18} color="#6b7280" />
-          </TouchableOpacity>
-        </View>
-      </View>
+          <View className="bg-white rounded-xl p-6 shadow-sm">
+            {/* 이름 */}
+            <View className="mb-6">
+              <Text className="text-sm font-medium text-gray-700 mb-2">
+                이름 <Text className="text-red-500">*</Text>
+              </Text>
+              <TextInput
+                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900"
+                placeholder="이름을 입력하세요"
+                value={formData.name}
+                onChangeText={(text) => handleInputChange("name", text)}
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
 
-      {/* 지도 영역 */}
-      <View className="flex-1 relative">
-        <MapView
-          ref={mapRef}
-          provider={PROVIDER_GOOGLE}
-          style={{ flex: 1 }}
-          initialRegion={region}
-          customMapStyle={customMapStyle}
-          showsUserLocation={false}
-          showsMyLocationButton={false}
-          showsCompass={false}
-          toolbarEnabled={false}
-        >
-          {/* 이용자 마커 */}
-          <Marker
-            coordinate={{
-              latitude: userLocation.lat,
-              longitude: userLocation.lng,
-            }}
-            title={userLocation.name}
-            description="이용자 위치"
-          >
-            <View className="items-center">
-              <View className="bg-blue-500 p-3 rounded-full shadow-lg border-4 border-white">
-                <User size={20} color="white" />
+            {/* 생년월일 */}
+            <View className="mb-6">
+              <Text className="text-sm font-medium text-gray-700 mb-2">
+                생년월일 <Text className="text-red-500">*</Text>
+              </Text>
+              <TouchableOpacity
+                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 flex-row items-center"
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Calendar size={16} color="#6B7280" className="mr-2" />
+                <Text className={`flex-1 ${formData.birthDate ? 'text-gray-900' : 'text-gray-500'}`}>
+                  {formatDate(formData.birthDate)}
+                </Text>
+              </TouchableOpacity>
+
+              {showDatePicker && (
+                <DateTimePicker
+                  value={formData.birthDate || new Date()}
+                  mode="date"
+                  display="default"
+                  onChange={onDateChange}
+                  maximumDate={new Date()}
+                  minimumDate={new Date(1900, 0, 1)}
+                />
+              )}
+            </View>
+
+            {/* 전화번호 */}
+            <View className="mb-6">
+              <Text className="text-sm font-medium text-gray-700 mb-2">
+                전화번호 <Text className="text-red-500">*</Text>
+              </Text>
+              <TextInput
+                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900"
+                placeholder="010-0000-0000"
+                value={formData.phone}
+                onChangeText={(text) => handleInputChange("phone", text)}
+                keyboardType="phone-pad"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            {/* 비밀번호 */}
+            <View className="mb-6">
+              <Text className="text-sm font-medium text-gray-700 mb-2">
+                비밀번호 <Text className="text-red-500">*</Text>
+              </Text>
+              <TextInput
+                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900"
+                placeholder="비밀번호를 입력하세요"
+                value={formData.password}
+                onChangeText={(text) => handleInputChange("password", text)}
+                secureTextEntry
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            {/* 비밀번호 확인 */}
+            <View className="mb-6">
+              <Text className="text-sm font-medium text-gray-700 mb-2">
+                비밀번호 확인 <Text className="text-red-500">*</Text>
+              </Text>
+              <TextInput
+                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900"
+                placeholder="비밀번호를 다시 입력하세요"
+                value={formData.confirmPassword}
+                onChangeText={(text) => handleInputChange("confirmPassword", text)}
+                secureTextEntry
+                placeholderTextColor="#9CA3AF"
+              />
+              {formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                <Text className="text-xs text-red-600 mt-1">비밀번호가 일치하지 않습니다</Text>
+              )}
+            </View>
+
+            {/* 주소 */}
+            <View className="mb-6">
+              <Text className="text-sm font-medium text-gray-700 mb-2">
+                주소 <Text className="text-red-500">*</Text>
+              </Text>
+              
+              {/* 우편번호 */}
+              <View className="flex-row mb-3">
+                <TextInput
+                  className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 mr-2"
+                  placeholder="우편번호"
+                  value={formData.zipCode}
+                  onChangeText={(text) => handleInputChange("zipCode", text)}
+                  editable={false}
+                  placeholderTextColor="#9CA3AF"
+                />
+                <TouchableOpacity
+                  className="bg-gray-200 border border-gray-300 rounded-lg px-4 py-3 flex-row items-center"
+                  onPress={searchZipCode}
+                >
+                  <Search size={16} color="#374151" className="mr-1" />
+                  <Text className="text-gray-700 font-medium">검색</Text>
+                </TouchableOpacity>
               </View>
-              <View className="mt-1 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-200">
-                <Text className="text-xs font-medium text-blue-600">{userLocation.name}</Text>
+
+              {/* 기본주소 */}
+              <TextInput
+                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 mb-3"
+                placeholder="기본주소"
+                value={formData.address}
+                onChangeText={(text) => handleInputChange("address", text)}
+                editable={false}
+                placeholderTextColor="#9CA3AF"
+              />
+
+              {/* 상세주소 */}
+              <TextInput
+                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900"
+                placeholder="상세주소를 입력하세요"
+                value={formData.detailAddress}
+                onChangeText={(text) => handleInputChange("detailAddress", text)}
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            {/* 이용자 구분 */}
+            <View className="mb-6">
+              <CheckboxItem
+                id="elderly"
+                checked={formData.isElderly}
+                onPress={() => {
+                  const newValue = !formData.isElderly;
+                  handleInputChange("isElderly", newValue);
+                  if (!newValue) {
+                    handleInputChange("careCenter", null);
+                  }
+                }}
+                label="노인 이용자입니다"
+              />
+
+              {/* 요양원/보호센터 정보 */}
+              {formData.isElderly && (
+                <View className="ml-8 mt-4 p-4 border-l-2 border-blue-200 bg-blue-50 rounded-r-lg">
+                  <Text className="text-sm font-medium text-gray-700 mb-2">
+                    요양원/보호센터 <Text className="text-red-500">*</Text>
+                  </Text>
+
+                  {formData.careCenter ? (
+                    <View className="bg-white p-4 border border-gray-200 rounded-lg">
+                      <View className="flex-row justify-between items-start mb-2">
+                        <Text className="font-medium text-gray-900 flex-1">
+                          {formData.careCenter.name}
+                        </Text>
+                        <View className="bg-blue-100 px-2 py-1 rounded">
+                          <Text className="text-xs text-blue-800">
+                            {formData.careCenter.type}
+                          </Text>
+                        </View>
+                      </View>
+                      <View className="flex-row items-center mb-2">
+                        <MapPin size={12} color="#6B7280" className="mr-1" />
+                        <Text className="text-sm text-gray-500 flex-1">
+                          {formData.careCenter.address}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        className="absolute top-2 right-2"
+                        onPress={removeCareCenter}
+                      >
+                        <X size={16} color="#6B7280" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      className="bg-white border border-gray-200 rounded-lg px-4 py-3 flex-row items-center justify-between"
+                      onPress={() => setIsCareCenterModalOpen(true)}
+                    >
+                      <Text className="text-gray-500">요양원/보호센터를 검색하세요</Text>
+                      <Search size={16} color="#6B7280" />
+                    </TouchableOpacity>
+                  )}
+
+                  {formData.isElderly && !formData.careCenter && (
+                    <Text className="text-xs text-amber-600 mt-1">
+                      노인 이용자는 요양원/보호센터 선택이 필요합니다
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
+
+            {/* 서비스 선택 */}
+            <View className="mb-6">
+              <Text className="text-sm font-medium text-gray-700 mb-4">
+                이용 서비스 선택 <Text className="text-red-500">*</Text>
+              </Text>
+              <View className="space-y-2">
+                <ServiceCheckboxItem
+                  service="PAYPASS_SERVICE"
+                  label="PAYPASS_SERVICE (결제 서비스)"
+                />
+                <ServiceCheckboxItem
+                  service="CARE_SERVICE"
+                  label="CARE_SERVICE (돌봄 서비스)"
+                />
+                <ServiceCheckboxItem
+                  service="ALL_SERVICE"
+                  label="ALL_SERVICE (전체 서비스)"
+                />
+                <ServiceCheckboxItem
+                  service="NONE"
+                  label="NONE (서비스 미선택)"
+                />
               </View>
             </View>
-          </Marker>
 
-          {/* 요양원/보호센터 마커들 */}
-          {CARE_CENTERS.map((center) => (
-            <Marker
-              key={center.id}
-              coordinate={{
-                latitude: center.lat,
-                longitude: center.lng,
-              }}
-              title={center.name}
-              description={center.type}
-              onPress={() => handleCenterPress(center)}
+            {/* 회원가입 버튼 */}
+            <TouchableOpacity
+              className={`rounded-lg py-4 px-6 ${
+                isFormValid() ? 'bg-blue-600 active:bg-blue-700' : 'bg-gray-300'
+              }`}
+              onPress={handleSubmit}
+              disabled={!isFormValid()}
             >
-              <View className="items-center">
-                <View className="bg-green-500 p-3 rounded-full shadow-lg border-4 border-white">
-                  <MapPin size={18} color="white" />
-                </View>
-                <View className="mt-1 bg-white px-2 py-0.5 rounded-full shadow-sm border border-gray-200">
-                  <Text className="text-xs font-medium text-green-600">{center.type}</Text>
-                </View>
-              </View>
-            </Marker>
-          ))}
-        </MapView>
+              <Text className={`text-center text-lg font-medium ${
+                isFormValid() ? 'text-white' : 'text-gray-500'
+              }`}>
+                회원가입 완료
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
 
-        {/* 내 위치 버튼 */}
-        <TouchableOpacity
-          className="absolute bottom-32 right-4 bg-white p-4 rounded-full shadow-lg border border-gray-200"
-          onPress={moveToMyLocation}
-          style={{
-            elevation: 8,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 8,
-          }}
+        {/* 요양원/보호센터 검색 모달 */}
+        <Modal
+          visible={isCareCenterModalOpen}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsCareCenterModalOpen(false)}
         >
-          <Locate size={24} color="#2563eb" />
-        </TouchableOpacity>
+          <View className="flex-1 bg-black/50 justify-center items-center">
+            <View className="bg-white rounded-xl m-4 p-6 max-h-96 w-full max-w-md">
+              <Text className="text-xl font-bold text-gray-900 mb-4">
+                요양원/보호센터 검색
+              </Text>
+              
+              <TextInput
+                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4"
+                placeholder="이름 또는 주소로 검색"
+                value={searchTerm}
+                onChangeText={setSearchTerm}
+                placeholderTextColor="#9CA3AF"
+              />
 
-        {/* 선택된 센터 정보 카드 */}
-        {selectedCenter && (
-          <View className="absolute bottom-32 left-4 right-4 bg-white rounded-2xl shadow-2xl p-6 border border-gray-100"
-            style={{
-              elevation: 12,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.15,
-              shadowRadius: 12,
-            }}
-          >
-            <View className="flex-row items-start justify-between">
-              <View className="flex-1">
-                <View className="flex-row items-center mb-3">
-                  <Text className="text-xl font-bold mr-3 text-gray-900">
-                    {selectedCenter.name}
-                  </Text>
-                  <View className="bg-green-50 px-3 py-1 rounded-full border border-green-200">
-                    <Text className="text-sm text-green-700 font-medium">
-                      {selectedCenter.type}
-                    </Text>
-                  </View>
-                </View>
-
-                <View className="flex-row items-center mb-2">
-                  <MapPin size={16} color="#6b7280" />
-                  <Text className="text-sm text-gray-600 ml-2 flex-1">
-                    {selectedCenter.address}
-                  </Text>
-                </View>
-
-                <Text className="text-sm text-gray-600 mb-3">
-                  전화: {selectedCenter.phone}
-                </Text>
-
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center bg-yellow-50 px-3 py-1 rounded-full">
-                    <Text className="text-yellow-500 text-lg">★</Text>
-                    <Text className="text-sm ml-1 font-medium text-yellow-700">{selectedCenter.rating}</Text>
-                  </View>
-                  
+              <FlatList
+                data={filteredCenters}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
                   <TouchableOpacity
-                    className="bg-blue-600 px-6 py-3 rounded-xl"
-                    onPress={handleCenterDetail}
-                    style={{
-                      shadowColor: '#2563eb',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.2,
-                      shadowRadius: 4,
-                      elevation: 4,
-                    }}
+                    className="p-3 border-b border-gray-100"
+                    onPress={() => selectCareCenter(item)}
                   >
-                    <Text className="text-white text-sm font-semibold">
-                      상세 정보
-                    </Text>
+                    <View className="flex-row items-center justify-between mb-1">
+                      <Text className="font-medium text-gray-900 flex-1">
+                        {item.name}
+                      </Text>
+                      <View className="bg-blue-100 px-2 py-1 rounded">
+                        <Text className="text-xs text-blue-800">{item.type}</Text>
+                      </View>
+                    </View>
+                    <View className="flex-row items-center">
+                      <MapPin size={12} color="#6B7280" className="mr-1" />
+                      <Text className="text-sm text-gray-500 flex-1">
+                        {item.address}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
-                </View>
-              </View>
+                )}
+                ListEmptyComponent={
+                  <Text className="text-center text-gray-500 py-4">
+                    검색 결과가 없습니다
+                  </Text>
+                }
+              />
 
               <TouchableOpacity
-                className="p-2 bg-gray-50 rounded-full ml-3"
-                onPress={() => setSelectedCenter(null)}
+                className="bg-gray-200 rounded-lg py-3 mt-4"
+                onPress={() => setIsCareCenterModalOpen(false)}
               >
-                <X size={20} color="#9ca3af" />
+                <Text className="text-center text-gray-700 font-medium">닫기</Text>
               </TouchableOpacity>
             </View>
           </View>
-        )}
-      </View>
-
-      {/* 하단 네비게이션 - 보호자용 */}
-      <View className="bg-white border-t border-gray-100 px-4 py-2"
-        style={{
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 8,
-        }}
-      >
-        <View className="flex-row justify-center space-x-6">
-          <TouchableOpacity className="items-center py-3 px-4">
-            <View className="bg-blue-50 p-2 rounded-full">
-              <MapPin size={24} color="#2563eb" />
-            </View>
-            <Text className="text-xs text-blue-600 mt-2 font-medium">지도</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            className="items-center py-3 px-4"
-            onPress={() => navigateToScreen('Users')}
-          >
-            <View className="bg-gray-50 p-2 rounded-full">
-              <Users size={24} color="#6b7280" />
-            </View>
-            <Text className="text-xs text-gray-600 mt-2">이용자</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            className="items-center py-3 px-4"
-            onPress={() => navigateToScreen('Notifications')}
-          >
-            <View className="bg-gray-50 p-2 rounded-full">
-              <Bell size={24} color="#6b7280" />
-            </View>
-            <Text className="text-xs text-gray-600 mt-2">알림</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            className="items-center py-3 px-4"
-            onPress={() => navigateToScreen('MyPage')}
-          >
-            <View className="bg-gray-50 p-2 rounded-full">
-              <User size={24} color="#6b7280" />
-            </View>
-            <Text className="text-xs text-gray-600 mt-2">마이페이지</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+        </Modal>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
-export default MainPage;
+export default SignupPage;
