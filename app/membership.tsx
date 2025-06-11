@@ -1,22 +1,26 @@
-import React, { useState, useEffect } from 'react';
+// SignupPage.tsx
+import DateTimePicker from '@react-native-community/datetimepicker';
+import type { NavigationProp } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
+import { Calendar, Check, MapPin, Search, X } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  SafeAreaView,
-  Alert,
-  Modal,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
+  View,
 } from 'react-native';
-import { Calendar, Search, MapPin, X, Check } from 'lucide-react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { WebView } from 'react-native-webview';
-import { useNavigation } from '@react-navigation/native';
-import type { NavigationProp } from '@react-navigation/native';
+
+// 다음 우편번호 컴포넌트 import
+import DaumPostcode, { DaumPostcodeData } from './DaumPostcode';
 
 // 모의 요양원/보호센터 데이터
 const CARE_CENTERS = [
@@ -30,6 +34,7 @@ const CARE_CENTERS = [
   { id: 8, name: "푸른 노인복지센터", address: "서울특별시 종로구 종로 505", type: "복지센터" },
 ];
 
+// 인터페이스 정의
 interface CareCenter {
   id: number;
   name: string;
@@ -61,6 +66,7 @@ type SignupScreenNavigationProp = NavigationProp<RootStackParamList, 'Signup'>;
 
 const SignupPage: React.FC = () => {
   const navigation = useNavigation<SignupScreenNavigationProp>();
+  
   const [formData, setFormData] = useState<FormData>({
     name: "",
     birthDate: null,
@@ -77,205 +83,10 @@ const SignupPage: React.FC = () => {
 
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
   const [isCareCenterModalOpen, setIsCareCenterModalOpen] = useState<boolean>(false);
-  const [isPostcodeModalOpen, setIsPostcodeModalOpen] = useState<boolean>(false);
+  // 🔧 다음 우편번호 검색 모달 상태
+  const [isPostcodeMode, setIsPostcodeMode] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filteredCenters, setFilteredCenters] = useState<CareCenter[]>(CARE_CENTERS);
-
-  // 다음 우편번호 API HTML (수정된 버전)
-  const postcodeHTML = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>우편번호 검색</title>
-        <style>
-          body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-            background: white;
-          }
-          #layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: white;
-          }
-          .close-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 1000;
-            background: #f0f0f0;
-            border: none;
-            border-radius: 20px;
-            width: 40px;
-            height: 40px;
-            font-size: 18px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-          }
-          .loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            color: #666;
-          }
-          #postcode {
-            width: 100%;
-            height: 100%;
-          }
-        </style>
-      </head>
-      <body>
-        <div id="layer">
-          <button class="close-btn" onclick="closeDaumPostcode()">×</button>
-          <div class="loading" id="loading">주소 검색을 로딩 중...</div>
-          <div id="postcode"></div>
-        </div>
-        
-        <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
-        <script>
-          function initDaumPostcode() {
-            // 로딩 메시지 숨기기
-            const loadingEl = document.getElementById('loading');
-            if (loadingEl) {
-              loadingEl.style.display = 'none';
-            }
-            
-            try {
-              new daum.Postcode({
-                oncomplete: function(data) {
-                  var addr = '';
-                  var extraAddr = '';
-
-                  // 사용자가 선택한 주소 타입에 따라 처리
-                  if (data.userSelectedType === 'R') { // 도로명 주소
-                    addr = data.roadAddress;
-                  } else { // 지번 주소
-                    addr = data.jibunAddress;
-                  }
-
-                  // 도로명 주소인 경우 추가 정보 처리
-                  if (data.userSelectedType === 'R') {
-                    if (data.bname !== '' && /[동|로|가]$/g.test(data.bname)) {
-                      extraAddr += data.bname;
-                    }
-                    if (data.buildingName !== '' && data.apartment === 'Y') {
-                      extraAddr += (extraAddr !== '' ? ', ' + data.buildingName : data.buildingName);
-                    }
-                    if (extraAddr !== '') {
-                      extraAddr = ' (' + extraAddr + ')';
-                    }
-                    addr += extraAddr;
-                  }
-
-                  // React Native로 데이터 전달
-                  try {
-                    const messageData = {
-                      type: 'complete',
-                      zipCode: data.zonecode,
-                      address: addr
-                    };
-                    
-                    if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-                      window.ReactNativeWebView.postMessage(JSON.stringify(messageData));
-                    }
-                  } catch (error) {
-                    if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-                      window.ReactNativeWebView.postMessage(JSON.stringify({
-                        type: 'error',
-                        message: '주소 전송 중 오류가 발생했습니다'
-                      }));
-                    }
-                  }
-                },
-                onerror: function(error) {
-                  if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-                    window.ReactNativeWebView.postMessage(JSON.stringify({
-                      type: 'error',
-                      message: '주소 검색 중 오류가 발생했습니다: ' + error
-                    }));
-                  }
-                },
-                onclose: function(state) {
-                  // 완료 후 닫힘이 아닌 경우에만 close 메시지 전송
-                  if (state !== 'COMPLETE_CLOSE') {
-                    try {
-                      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-                        window.ReactNativeWebView.postMessage(JSON.stringify({
-                          type: 'close'
-                        }));
-                      }
-                    } catch (error) {
-                      // 에러 무시
-                    }
-                  }
-                },
-                width: '100%',
-                height: '100%',
-                maxSuggestItems: 5,
-                autoMapping: true,
-                shorthand: false
-              }).embed('postcode');
-            } catch (error) {
-              const loadingEl = document.getElementById('loading');
-              if (loadingEl) {
-                loadingEl.innerHTML = '주소 검색 서비스를 불러올 수 없습니다: ' + error.message;
-              }
-            }
-          }
-
-          function closeDaumPostcode() {
-            try {
-              if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-                window.ReactNativeWebView.postMessage(JSON.stringify({
-                  type: 'close'
-                }));
-              }
-            } catch (error) {
-              // 에러 무시
-            }
-          }
-
-          // 스크립트 로딩 및 초기화
-          function checkAndInit() {
-            if (typeof daum !== 'undefined' && daum.Postcode) {
-              initDaumPostcode();
-            } else {
-              setTimeout(checkAndInit, 100);
-            }
-          }
-
-          // DOMContentLoaded 이벤트 리스너
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', function() {
-              checkAndInit();
-            });
-          } else {
-            checkAndInit();
-          }
-
-          // 추가 안전장치
-          window.addEventListener('load', function() {
-            setTimeout(function() {
-              if (typeof daum !== 'undefined' && daum.Postcode) {
-                initDaumPostcode();
-              }
-            }, 500);
-          });
-        </script>
-      </body>
-    </html>
-  `;
 
   // 검색어에 따라 요양원/보호센터 필터링
   useEffect(() => {
@@ -292,63 +103,74 @@ const SignupPage: React.FC = () => {
     }
   }, [searchTerm]);
 
-  const handleInputChange = (field: keyof FormData, value: any) => {
+  const handleInputChange = <K extends keyof FormData>(
+    field: K,
+    value: FormData[K]
+  ): void => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
   };
 
-  // 우편번호 검색 버튼 클릭
-  const searchZipCode = () => {
-    setIsPostcodeModalOpen(true);
+  // 🔧 다음 우편번호 검색 시작
+  const searchZipCode = (): void => {
+    setIsPostcodeMode(true);
   };
 
-  // 웹뷰에서 메시지 수신 (수정됨)
-  const handleWebViewMessage = (event: any) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-      
-      if (data.type === 'complete') {
-        // 주소 정보 설정
-        setFormData(prev => ({
-          ...prev,
-          zipCode: data.zipCode,
-          address: data.address
-        }));
-        
-        // 모달 닫기
-        setIsPostcodeModalOpen(false);
-        
-        // 성공 알림
-        Alert.alert("성공", "주소가 선택되었습니다.");
-      } else if (data.type === 'close') {
-        setIsPostcodeModalOpen(false);
-      } else if (data.type === 'error') {
-        Alert.alert("오류", data.message);
-        setIsPostcodeModalOpen(false);
+  // 🔧 다음 우편번호 API에서 주소 선택 처리
+  const handleDaumPostcode = (data: DaumPostcodeData): void => {
+    console.log('다음 우편번호 API 데이터:', data);
+    
+    // 주소 조합 로직 (문서의 예시를 참고)
+    let fullAddress = data.address;
+    let extraAddress = '';
+
+    // 도로명 주소인 경우 추가 정보 처리
+    if (data.addressType === 'R') {
+      if (data.bname !== '') {
+        extraAddress += data.bname;
       }
-    } catch (error) {
-      Alert.alert("오류", "주소 검색 중 오류가 발생했습니다.");
+      if (data.buildingName !== '') {
+        extraAddress +=
+          extraAddress !== '' ? `, ${data.buildingName}` : data.buildingName;
+      }
+      fullAddress += extraAddress !== '' ? ` (${extraAddress})` : '';
     }
+
+    // 폼 데이터 업데이트
+    setFormData(prev => ({
+      ...prev,
+      address: fullAddress,
+      zipCode: String(data.zonecode),
+    }));
+    
+    // 모달 닫기
+    setIsPostcodeMode(false);
+    
+    // 성공 알림
+    Alert.alert(
+      "✅ 주소 선택 완료", 
+      `우편번호: ${data.zonecode}\n주소: ${fullAddress}\n\n상세주소를 입력해주세요.`,
+      [{ text: "확인" }]
+    );
   };
 
-  // WebView 오류 처리
-  const handleWebViewError = (syntheticEvent: any) => {
-    const { nativeEvent } = syntheticEvent;
-    Alert.alert("오류", "주소 검색 서비스를 불러올 수 없습니다. 네트워크 연결을 확인해주세요.");
+  // 다음 우편번호 검색 모달 닫기
+  const closeDaumPostcode = (): void => {
+    setIsPostcodeMode(false);
   };
 
-  const selectCareCenter = (center: CareCenter) => {
+  const selectCareCenter = (center: CareCenter): void => {
     handleInputChange("careCenter", center);
     setIsCareCenterModalOpen(false);
   };
 
-  const removeCareCenter = () => {
+  const removeCareCenter = (): void => {
     handleInputChange("careCenter", null);
   };
 
-  const onDateChange = (event: any, selectedDate?: Date) => {
+  const onDateChange = (event: any, selectedDate?: Date): void => {
     setShowDatePicker(false);
     if (selectedDate) {
       handleInputChange("birthDate", selectedDate);
@@ -386,7 +208,6 @@ const SignupPage: React.FC = () => {
     return basicFieldsValid && passwordsMatch;
   };
 
-  // 회원가입 데이터 준비 함수
   const prepareSignupData = () => {
     const signupData = {
       name: formData.name,
@@ -403,11 +224,13 @@ const SignupPage: React.FC = () => {
     return signupData;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = (): void => {
     if (isFormValid()) {
       const signupData = prepareSignupData();
+      console.log('회원가입 데이터:', signupData);
+      
       Alert.alert(
-        "회원가입 완료", 
+        "🎉 회원가입 완료", 
         "회원가입이 성공적으로 완료되었습니다!",
         [
           {
@@ -417,10 +240,11 @@ const SignupPage: React.FC = () => {
         ]
       );
     } else {
-      Alert.alert("오류", "모든 필수 항목을 입력해주세요.");
+      Alert.alert("⚠️ 입력 오류", "모든 필수 항목을 올바르게 입력해주세요.");
     }
   };
 
+  // 체크박스 컴포넌트
   const CheckboxItem: React.FC<{
     id: string;
     checked: boolean;
@@ -428,18 +252,18 @@ const SignupPage: React.FC = () => {
     label: string;
   }> = ({ checked, onPress, label }) => (
     <TouchableOpacity 
-      className="flex-row items-center py-2" 
+      style={styles.checkboxContainer}
       onPress={onPress}
+      activeOpacity={0.7}
     >
-      <View className={`w-5 h-5 border-2 rounded mr-3 items-center justify-center ${
-        checked ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
-      }`}>
+      <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
         {checked && <Check size={12} color="white" />}
       </View>
-      <Text className="text-sm font-medium text-gray-700 flex-1">{label}</Text>
+      <Text style={styles.checkboxLabel}>{label}</Text>
     </TouchableOpacity>
   );
 
+  // 서비스 선택 체크박스
   const ServiceCheckboxItem: React.FC<{
     service: string;
     label: string;
@@ -447,36 +271,52 @@ const SignupPage: React.FC = () => {
     <CheckboxItem
       id={service}
       checked={formData.selectedService === service}
-      onPress={() => handleInputChange("selectedService", service)}
+      onPress={() => handleInputChange("selectedService", service as FormData['selectedService'])}
       label={label}
     />
   );
 
+  // 🔧 다음 우편번호 검색 모드인 경우
+  if (isPostcodeMode) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.postcodeHeader}>
+          <Text style={styles.postcodeTitle}>주소 검색</Text>
+          <TouchableOpacity onPress={closeDaumPostcode} style={styles.closeButton}>
+            <X size={24} color="#ffffff" />
+          </TouchableOpacity>
+        </View>
+        <DaumPostcode 
+          onSubmit={handleDaumPostcode}
+          onClose={closeDaumPostcode}
+        />
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
+        style={styles.keyboardView}
       >
-        <ScrollView className="flex-1 px-4 py-6">
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           {/* 헤더 */}
-          <View className="bg-white rounded-xl p-6 mb-6 shadow-sm">
-            <Text className="text-2xl font-bold text-gray-900 text-center mb-2">
-              회원가입
-            </Text>
-            <Text className="text-gray-500 text-center">
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>회원가입</Text>
+            <Text style={styles.headerSubtitle}>
               서비스 이용을 위해 정보를 입력해주세요
             </Text>
           </View>
 
-          <View className="bg-white rounded-xl p-6 shadow-sm">
+          <View style={styles.formContainer}>
             {/* 이름 */}
-            <View className="mb-6">
-              <Text className="text-sm font-medium text-gray-700 mb-2">
-                이름 <Text className="text-red-500">*</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                이름 <Text style={styles.required}>*</Text>
               </Text>
               <TextInput
-                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900"
+                style={styles.textInput}
                 placeholder="이름을 입력하세요"
                 value={formData.name}
                 onChangeText={(text) => handleInputChange("name", text)}
@@ -485,16 +325,17 @@ const SignupPage: React.FC = () => {
             </View>
 
             {/* 생년월일 */}
-            <View className="mb-6">
-              <Text className="text-sm font-medium text-gray-700 mb-2">
-                생년월일 <Text className="text-red-500">*</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                생년월일 <Text style={styles.required}>*</Text>
               </Text>
               <TouchableOpacity
-                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 flex-row items-center"
+                style={styles.dateButton}
                 onPress={() => setShowDatePicker(true)}
+                activeOpacity={0.7}
               >
-                <Calendar size={16} color="#6B7280" className="mr-2" />
-                <Text className={`flex-1 ${formData.birthDate ? 'text-gray-900' : 'text-gray-500'}`}>
+                <Calendar size={16} color="#6B7280" style={styles.dateIcon} />
+                <Text style={[styles.dateText, formData.birthDate && styles.dateTextSelected]}>
                   {formatDate(formData.birthDate)}
                 </Text>
               </TouchableOpacity>
@@ -512,16 +353,15 @@ const SignupPage: React.FC = () => {
             </View>
 
             {/* 전화번호 */}
-            <View className="mb-6">
-              <Text className="text-sm font-medium text-gray-700 mb-2">
-                전화번호 <Text className="text-red-500">*</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                전화번호 <Text style={styles.required}>*</Text>
               </Text>
               <TextInput
-                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900"
+                style={styles.textInput}
                 placeholder="01000000000 숫자만 작성"
                 value={formData.phone}
                 onChangeText={(text) => {
-                  // 숫자만 입력되도록 필터링
                   const numericText = text.replace(/[^0-9]/g, '');
                   handleInputChange("phone", numericText);
                 }}
@@ -532,12 +372,12 @@ const SignupPage: React.FC = () => {
             </View>
 
             {/* 비밀번호 */}
-            <View className="mb-6">
-              <Text className="text-sm font-medium text-gray-700 mb-2">
-                비밀번호 <Text className="text-red-500">*</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                비밀번호 <Text style={styles.required}>*</Text>
               </Text>
               <TextInput
-                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900"
+                style={styles.textInput}
                 placeholder="비밀번호를 입력하세요"
                 value={formData.password}
                 onChangeText={(text) => handleInputChange("password", text)}
@@ -547,12 +387,12 @@ const SignupPage: React.FC = () => {
             </View>
 
             {/* 비밀번호 확인 */}
-            <View className="mb-6">
-              <Text className="text-sm font-medium text-gray-700 mb-2">
-                비밀번호 확인 <Text className="text-red-500">*</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                비밀번호 확인 <Text style={styles.required}>*</Text>
               </Text>
               <TextInput
-                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900"
+                style={styles.textInput}
                 placeholder="비밀번호를 다시 입력하세요"
                 value={formData.confirmPassword}
                 onChangeText={(text) => handleInputChange("confirmPassword", text)}
@@ -560,40 +400,41 @@ const SignupPage: React.FC = () => {
                 placeholderTextColor="#9CA3AF"
               />
               {formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword && (
-                <Text className="text-xs text-red-600 mt-1">비밀번호가 일치하지 않습니다</Text>
+                <Text style={styles.errorText}>비밀번호가 일치하지 않습니다</Text>
               )}
               {formData.password && formData.confirmPassword && formData.password === formData.confirmPassword && (
-                <Text className="text-xs text-green-600 mt-1">비밀번호가 일치합니다</Text>
+                <Text style={styles.successText}>비밀번호가 일치합니다</Text>
               )}
             </View>
 
-            {/* 주소 */}
-            <View className="mb-6">
-              <Text className="text-sm font-medium text-gray-700 mb-2">
-                주소 <Text className="text-red-500">*</Text>
+            {/* 주소 - 다음 우편번호 API 사용 */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                주소 <Text style={styles.required}>*</Text>
               </Text>
               
               {/* 우편번호 */}
-              <View className="flex-row mb-3">
+              <View style={styles.zipCodeRow}>
                 <TextInput
-                  className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 mr-2"
+                  style={[styles.textInput, styles.zipCodeInput]}
                   placeholder="우편번호"
                   value={formData.zipCode}
                   editable={false}
                   placeholderTextColor="#9CA3AF"
                 />
                 <TouchableOpacity
-                  className="bg-blue-600 border border-blue-600 rounded-lg px-4 py-3 flex-row items-center"
+                  style={styles.searchButton}
                   onPress={searchZipCode}
+                  activeOpacity={0.7}
                 >
-                  <Search size={16} color="white" className="mr-1" />
-                  <Text className="text-white font-medium">검색</Text>
+                  <Search size={16} color="white" style={styles.searchIcon} />
+                  <Text style={styles.searchButtonText}>검색</Text>
                 </TouchableOpacity>
               </View>
 
               {/* 기본주소 */}
               <TextInput
-                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 mb-3"
+                style={[styles.textInput, { marginBottom: 12 }]}
                 placeholder="기본주소"
                 value={formData.address}
                 editable={false}
@@ -602,7 +443,7 @@ const SignupPage: React.FC = () => {
 
               {/* 상세주소 */}
               <TextInput
-                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900"
+                style={styles.textInput}
                 placeholder="상세주소를 입력하세요"
                 value={formData.detailAddress}
                 onChangeText={(text) => handleInputChange("detailAddress", text)}
@@ -611,7 +452,7 @@ const SignupPage: React.FC = () => {
             </View>
 
             {/* 이용자 구분 */}
-            <View className="mb-6">
+            <View style={styles.inputGroup}>
               <CheckboxItem
                 id="elderly"
                 checked={formData.isElderly}
@@ -627,48 +468,50 @@ const SignupPage: React.FC = () => {
 
               {/* 요양원/보호센터 정보 */}
               {formData.isElderly && (
-                <View className="ml-8 mt-4 p-4 border-l-2 border-blue-200 bg-blue-50 rounded-r-lg">
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    요양원/보호센터 <Text className="text-red-500">*</Text>
+                <View style={styles.elderlySection}>
+                  <Text style={styles.label}>
+                    요양원/보호센터 <Text style={styles.required}>*</Text>
                   </Text>
 
                   {formData.careCenter ? (
-                    <View className="bg-white p-4 border border-gray-200 rounded-lg">
-                      <View className="flex-row justify-between items-start mb-2">
-                        <Text className="font-medium text-gray-900 flex-1">
+                    <View style={styles.careCenterCard}>
+                      <View style={styles.careCenterHeader}>
+                        <Text style={styles.careCenterName}>
                           {formData.careCenter.name}
                         </Text>
-                        <View className="bg-blue-100 px-2 py-1 rounded">
-                          <Text className="text-xs text-blue-800">
+                        <View style={styles.careCenterTypeTag}>
+                          <Text style={styles.careCenterTypeText}>
                             {formData.careCenter.type}
                           </Text>
                         </View>
                       </View>
-                      <View className="flex-row items-center mb-2">
-                        <MapPin size={12} color="#6B7280" className="mr-1" />
-                        <Text className="text-sm text-gray-500 flex-1">
+                      <View style={styles.careCenterAddressRow}>
+                        <MapPin size={12} color="#6B7280" style={styles.mapIcon} />
+                        <Text style={styles.careCenterAddress}>
                           {formData.careCenter.address}
                         </Text>
                       </View>
                       <TouchableOpacity
-                        className="absolute top-2 right-2"
+                        style={styles.removeButton}
                         onPress={removeCareCenter}
+                        activeOpacity={0.7}
                       >
                         <X size={16} color="#6B7280" />
                       </TouchableOpacity>
                     </View>
                   ) : (
                     <TouchableOpacity
-                      className="bg-white border border-gray-200 rounded-lg px-4 py-3 flex-row items-center justify-between"
+                      style={styles.careCenterSearchButton}
                       onPress={() => setIsCareCenterModalOpen(true)}
+                      activeOpacity={0.7}
                     >
-                      <Text className="text-gray-500">요양원/보호센터를 검색하세요</Text>
+                      <Text style={styles.careCenterSearchText}>요양원/보호센터를 검색하세요</Text>
                       <Search size={16} color="#6B7280" />
                     </TouchableOpacity>
                   )}
 
                   {formData.isElderly && !formData.careCenter && (
-                    <Text className="text-xs text-amber-600 mt-1">
+                    <Text style={styles.warningText}>
                       노인 이용자는 요양원/보호센터 선택이 필요합니다
                     </Text>
                   )}
@@ -677,11 +520,11 @@ const SignupPage: React.FC = () => {
             </View>
 
             {/* 서비스 선택 */}
-            <View className="mb-6">
-              <Text className="text-sm font-medium text-gray-700 mb-4">
-                이용 서비스 선택 <Text className="text-red-500">*</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                이용 서비스 선택 <Text style={styles.required}>*</Text>
               </Text>
-              <View className="space-y-2">
+              <View style={styles.serviceOptions}>
                 <ServiceCheckboxItem
                   service="PAYPASS_SERVICE"
                   label="PAYPASS_SERVICE (결제 서비스)"
@@ -703,67 +546,17 @@ const SignupPage: React.FC = () => {
 
             {/* 회원가입 버튼 */}
             <TouchableOpacity
-              className={`rounded-lg py-4 px-6 ${
-                isFormValid() ? 'bg-blue-600 active:bg-blue-700' : 'bg-gray-300'
-              }`}
+              style={[styles.submitButton, isFormValid() && styles.submitButtonActive]}
               onPress={handleSubmit}
               disabled={!isFormValid()}
+              activeOpacity={0.8}
             >
-              <Text className={`text-center text-lg font-medium ${
-                isFormValid() ? 'text-white' : 'text-gray-500'
-              }`}>
+              <Text style={[styles.submitButtonText, isFormValid() && styles.submitButtonTextActive]}>
                 회원가입 완료
               </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
-
-        {/* 다음 우편번호 검색 모달 */}
-        <Modal
-          visible={isPostcodeModalOpen}
-          animationType="slide"
-          transparent={false}
-          onRequestClose={() => setIsPostcodeModalOpen(false)}
-        >
-          <SafeAreaView className="flex-1 bg-white">
-            <View className="flex-1">
-              <View className="bg-gray-100 px-4 py-3 border-b border-gray-200">
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-lg font-semibold text-gray-900">주소 검색</Text>
-                  <TouchableOpacity
-                    onPress={() => setIsPostcodeModalOpen(false)}
-                    className="bg-gray-200 rounded-full p-2"
-                  >
-                    <X size={20} color="#374151" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-              <WebView
-                source={{ html: postcodeHTML }}
-                onMessage={handleWebViewMessage}
-                onError={handleWebViewError}
-                onHttpError={handleWebViewError}
-                javaScriptEnabled={true}
-                domStorageEnabled={true}
-                startInLoadingState={true}
-                scalesPageToFit={true}
-                mixedContentMode="compatibility"
-                allowsInlineMediaPlayback={true}
-                mediaPlaybackRequiresUserAction={false}
-                originWhitelist={['*']}
-                allowsFullscreenVideo={false}
-                bounces={false}
-                scrollEnabled={true}
-                style={{ flex: 1 }}
-                renderLoading={() => (
-                  <View className="flex-1 justify-center items-center bg-white">
-                    <Text className="text-gray-500">주소 검색을 준비 중...</Text>
-                  </View>
-                )}
-              />
-            </View>
-          </SafeAreaView>
-        </Modal>
 
         {/* 요양원/보호센터 검색 모달 */}
         <Modal
@@ -772,14 +565,14 @@ const SignupPage: React.FC = () => {
           transparent={true}
           onRequestClose={() => setIsCareCenterModalOpen(false)}
         >
-          <View className="flex-1 bg-black/50 justify-center items-center">
-            <View className="bg-white rounded-xl m-4 p-6 max-h-96 w-full max-w-md">
-              <Text className="text-xl font-bold text-gray-900 mb-4">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>
                 요양원/보호센터 검색
               </Text>
               
               <TextInput
-                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4"
+                style={styles.modalSearchInput}
                 placeholder="이름 또는 주소로 검색"
                 value={searchTerm}
                 onChangeText={setSearchTerm}
@@ -791,37 +584,39 @@ const SignupPage: React.FC = () => {
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={({ item }) => (
                   <TouchableOpacity
-                    className="p-3 border-b border-gray-100"
+                    style={styles.careCenterItem}
                     onPress={() => selectCareCenter(item)}
+                    activeOpacity={0.7}
                   >
-                    <View className="flex-row items-center justify-between mb-1">
-                      <Text className="font-medium text-gray-900 flex-1">
+                    <View style={styles.careCenterItemHeader}>
+                      <Text style={styles.careCenterItemName}>
                         {item.name}
                       </Text>
-                      <View className="bg-blue-100 px-2 py-1 rounded">
-                        <Text className="text-xs text-blue-800">{item.type}</Text>
+                      <View style={styles.careCenterItemTypeTag}>
+                        <Text style={styles.careCenterItemTypeText}>{item.type}</Text>
                       </View>
                     </View>
-                    <View className="flex-row items-center">
-                      <MapPin size={12} color="#6B7280" className="mr-1" />
-                      <Text className="text-sm text-gray-500 flex-1">
+                    <View style={styles.careCenterItemAddressRow}>
+                      <MapPin size={12} color="#6B7280" style={styles.mapIcon} />
+                      <Text style={styles.careCenterItemAddress}>
                         {item.address}
                       </Text>
                     </View>
                   </TouchableOpacity>
                 )}
                 ListEmptyComponent={
-                  <Text className="text-center text-gray-500 py-4">
+                  <Text style={styles.emptyText}>
                     검색 결과가 없습니다
                   </Text>
                 }
               />
 
               <TouchableOpacity
-                className="bg-gray-200 rounded-lg py-3 mt-4"
+                style={styles.modalCloseButton}
                 onPress={() => setIsCareCenterModalOpen(false)}
+                activeOpacity={0.7}
               >
-                <Text className="text-center text-gray-700 font-medium">닫기</Text>
+                <Text style={styles.modalCloseButtonText}>닫기</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -831,8 +626,365 @@ const SignupPage: React.FC = () => {
   );
 };
 
-export default SignupPage;
+// 🎨 스타일 정의
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 24,
+  },
+  header: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 24,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  formContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  inputGroup: {
+    marginBottom: 24,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  required: {
+    color: '#EF4444',
+  },
+  textInput: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#111827',
+  },
+  dateButton: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dateIcon: {
+    marginRight: 8,
+  },
+  dateText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  dateTextSelected: {
+    color: '#111827',
+  },
+  zipCodeRow: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  zipCodeInput: {
+    flex: 1,
+    marginRight: 8,
+  },
+  searchButton: {
+    backgroundColor: '#2563EB',
+    borderWidth: 1,
+    borderColor: '#2563EB',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  searchIcon: {
+    marginRight: 4,
+  },
+  searchButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '500',
+    fontSize: 14,
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#DC2626',
+    marginTop: 4,
+  },
+  successText: {
+    fontSize: 12,
+    color: '#059669',
+    marginTop: 4,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    borderRadius: 4,
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+    flex: 1,
+  },
+  elderlySection: {
+    marginLeft: 32,
+    marginTop: 16,
+    paddingLeft: 16,
+    borderLeftWidth: 2,
+    borderLeftColor: '#DBEAFE',
+    backgroundColor: '#EFF6FF',
+    borderTopRightRadius: 8,
+    borderBottomRightRadius: 8,
+    padding: 16,
+  },
+  careCenterCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    position: 'relative',
+  },
+  careCenterHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  careCenterName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#111827',
+    flex: 1,
+  },
+  careCenterTypeTag: {
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  careCenterTypeText: {
+    fontSize: 12,
+    color: '#1E40AF',
+  },
+  careCenterAddressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  mapIcon: {
+    marginRight: 4,
+  },
+  careCenterAddress: {
+    fontSize: 14,
+    color: '#6B7280',
+    flex: 1,
+  },
+  removeButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+  },
+  careCenterSearchButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  careCenterSearchText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  warningText: {
+    fontSize: 12,
+    color: '#D97706',
+    marginTop: 4,
+  },
+  serviceOptions: {
+    gap: 8,
+  },
+  submitButton: {
+    backgroundColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  submitButtonActive: {
+    backgroundColor: '#2563EB',
+  },
+  submitButtonText: {
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  submitButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  // 다음 우편번호 검색 관련 스타일
+  postcodeHeader: {
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  postcodeTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  closeButton: {
+    backgroundColor: '#1D4ED8',
+    borderRadius: 20,
+    padding: 8,
+    minWidth: 36,
+    minHeight: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // 모달 관련 스타일
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    margin: 16,
+    padding: 24,
+    maxHeight: 400,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  modalSearchInput: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  careCenterItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  careCenterItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  careCenterItemName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#111827',
+    flex: 1,
+  },
+  careCenterItemTypeTag: {
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  careCenterItemTypeText: {
+    fontSize: 12,
+    color: '#1E40AF',
+  },
+  careCenterItemAddressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  careCenterItemAddress: {
+    fontSize: 14,
+    color: '#6B7280',
+    flex: 1,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#6B7280',
+    paddingVertical: 16,
+  },
+  modalCloseButton: {
+    backgroundColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingVertical: 12,
+    marginTop: 16,
+  },
+  modalCloseButtonText: {
+    textAlign: 'center',
+    color: '#374151',
+    fontWeight: '500',
+  },
+});
 
-// 추가로 설치해야 할 패키지:
-// npm install react-native-webview
-// npx pod-install (iOS만 해당)
+export default SignupPage;
