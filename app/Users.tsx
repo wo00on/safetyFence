@@ -321,7 +321,7 @@ const UsersScreen: React.FC = () => {
         <View className="flex-row justify-center space-x-8">
           <TouchableOpacity
             className="items-center py-2 px-4"
-            onPress={() => navigation.navigate('main')}
+            onPress={() => navigation.navigate('main' as never)}
           >
             <MapPin size={24} color="#6b7280" />
             <Text className="text-xs text-gray-600 mt-1">지도</Text>

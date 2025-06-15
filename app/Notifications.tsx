@@ -1,15 +1,15 @@
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { Bell, Clock, MapPin, User } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
+  FlatList,
   SafeAreaView,
   StatusBar,
-  FlatList,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { MapPin, User, Bell, Clock } from 'lucide-react-native';
-import { StackNavigationProp } from '@react-navigation/stack';
 
 // 라우트 파라미터 타입 정의
 type RootStackParamList = {

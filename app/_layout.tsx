@@ -6,3 +6,4 @@ export default function RootLayout() {
 }
 
 // HEADER, FOOTER  기본 설정을 하는 곳이라고 생각각s
+
