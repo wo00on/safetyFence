@@ -2,6 +2,7 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { NavigationProp } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
+import axios from 'axios';
 import { Calendar, Check, MapPin, Search, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
@@ -224,13 +225,20 @@ const SignupPage: React.FC = () => {
     return signupData;
   };
 
-  const handleSubmit = (): void => {
-    if (isFormValid()) {
-      const signupData = prepareSignupData();
-      console.log('회원가입 데이터:', signupData);
-      
+  const handleSubmit = async (): Promise<void> => {
+    if (!isFormValid()) {
+      Alert.alert("⚠️ 입력 오류", "모든 필수 항목을 올바르게 입력해주세요.");
+      return;
+    }
+    
+    const signupData = prepareSignupData();
+
+    try {
+      const response = await axios.post(`http://192.168.0.100:8080/login/saveNewUser`, signupData);
+      console.log('서버 응답:', response.data);
+
       Alert.alert(
-        "🎉 회원가입 완료", 
+        "🎉 회원가입 완료",
         "회원가입이 성공적으로 완료되었습니다!",
         [
           {
@@ -239,8 +247,9 @@ const SignupPage: React.FC = () => {
           }
         ]
       );
-    } else {
-      Alert.alert("⚠️ 입력 오류", "모든 필수 항목을 올바르게 입력해주세요.");
+    } catch (error) {
+      console.error('회원가입 오류:', error);
+      Alert.alert("⚠️ 서버 오류", "회원가입에 실패했습니다. 다시 시도해주세요.");
     }
   };
 

@@ -5,16 +5,13 @@ import {
   BarChart,
   Bell,
   Filter,
-  Loader,
   Locate,
   MapPin,
   Navigation,
-  Pause,
-  Play,
   Search,
   User,
   Users,
-  X,
+  X
 } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -551,70 +548,6 @@ const MainPage: React.FC<MainPageProps> = () => {
     longitudeDelta: 0.01,
   };
 
-  // 실시간 추적 토글 버튼 컴포넌트
-  const RealTimeTrackingButton = () => (
-      <TouchableOpacity
-          className={`absolute bottom-44 right-4 p-4 rounded-full shadow-lg border-2 ${
-              locationState.isTracking
-                  ? 'bg-red-500 border-red-200'
-                  : 'bg-green-500 border-green-200'
-          }`}
-          onPress={locationState.isTracking ? stopLocationTracking : startLocationTracking}
-          disabled={locationState.isLoading}
-          style={{
-            elevation: 8,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 8,
-          }}
-      >
-        {locationState.isLoading ? (
-            <Loader size={24} color="white" />
-        ) : locationState.isTracking ? (
-            <Pause size={24} color="white" />
-        ) : (
-            <Play size={24} color="white" />
-        )}
-      </TouchableOpacity>
-  );
-
-  // 위치 정보 표시 컴포넌트
-  const LocationInfoCard = () => {
-    if (!locationState.currentLocation) return null;
-
-    return (
-        <View className="absolute top-20 left-4 right-4 bg-white rounded-2xl shadow-lg p-4 border border-gray-100"
-              style={{
-                elevation: 8,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-              }}
-        >
-          <Text className="text-sm font-semibold text-gray-800 mb-2">실시간 위치 정보</Text>
-          <Text className="text-xs text-gray-600">
-            위도: {locationState.currentLocation.latitude.toFixed(6)}
-          </Text>
-          <Text className="text-xs text-gray-600">
-            경도: {locationState.currentLocation.longitude.toFixed(6)}
-          </Text>
-          <Text className="text-xs text-gray-600">
-            정확도: {locationState.currentLocation.accuracy.toFixed(0)}m
-          </Text>
-          {locationState.currentLocation.speed && (
-              <Text className="text-xs text-gray-600">
-                속도: {(locationState.currentLocation.speed * 3.6).toFixed(1)} km/h
-              </Text>
-          )}
-          <Text className="text-xs text-gray-500 mt-1">
-            업데이트: {new Date(locationState.currentLocation.timestamp).toLocaleTimeString()}
-          </Text>
-        </View>
-    );
-  };
-
   // 이용자인 경우 UI
   if (userRole === 'user') {
     return (
@@ -668,12 +601,6 @@ const MainPage: React.FC<MainPageProps> = () => {
               </Marker>
             </MapView>
 
-            {/* 위치 정보 카드 */}
-            <LocationInfoCard />
-
-            {/* 실시간 추적 버튼 */}
-            <RealTimeTrackingButton />
-
             {/* 내 위치 버튼 */}
             <TouchableOpacity
                 className="absolute bottom-32 right-4 bg-white p-4 rounded-full shadow-lg border border-gray-200"
@@ -710,12 +637,12 @@ const MainPage: React.FC<MainPageProps> = () => {
 
               <TouchableOpacity
                   className="items-center py-3 px-4"
-                  onPress={() => navigateToScreen('Notifications')}
+                  onPress={() => navigateToScreen('MyLocationNotifications')}
               >
                 <View className="bg-gray-50 p-2 rounded-full">
                   <BarChart size={24} color="#6b7280" />
                 </View>
-                <Text className="text-xs text-gray-600 mt-2">알림</Text>
+                <Text className="text-xs text-gray-600 mt-2">내 위치</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -853,12 +780,6 @@ const MainPage: React.FC<MainPageProps> = () => {
             ))}
           </MapView>
 
-          {/* 위치 정보 카드 */}
-          <LocationInfoCard />
-
-          {/* 실시간 추적 버튼 */}
-          <RealTimeTrackingButton />
-
           {/* 내 위치 버튼 */}
           <TouchableOpacity
               className="absolute bottom-32 right-4 bg-white p-4 rounded-full shadow-lg border border-gray-200"
@@ -943,7 +864,6 @@ const MainPage: React.FC<MainPageProps> = () => {
               </View>
           )}
         </View>
-
         {/* 하단 네비게이션 - 보호자용 */}
         <View className="bg-white border-t border-gray-100 px-4 py-2"
               style={{
