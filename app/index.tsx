@@ -1,5 +1,5 @@
-import { useNavigation } from '@react-navigation/native';
-import { ArrowLeft } from 'lucide-react-native';
+import Global from '@/constants/Global';
+import { useNavigation } from '@react-navigation/native'; // 페이지간 이동 담당
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,61 +14,67 @@ import {
   View,
 } from 'react-native';
 
+
 interface LoginPageProps {}
 
 const LoginPage: React.FC<LoginPageProps> = () => {
   const navigation = useNavigation();
-  const [email, setEmail] = useState('');
+  const [number, setNumber] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('오류', '이메일과 비밀번호를 모두 입력해주세요.');
-      return;
-    }
 
     setIsLoading(true);
-
     try {
-      // 실제 구현에서는 서버 API 호출
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await fetch(`${Global.URL}/login/signIn`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ number, password }),
+      });
 
-      // 로그인 성공 시 역할 선택 페이지로 이동
+      const errorResponse = await response.json();
+
+      if (!response.ok) {
+        Alert.alert('로그인 실패', errorResponse.message);
+        return;
+      }
+
+      Global.NUMBER = number;
+      // 로그인 성공 처리 (토큰 저장 등)
       navigation.navigate('SelectRole' as never);
+
     } catch (error) {
-      console.error('로그인 실패:', error);
-      Alert.alert('로그인 실패', '로그인 중 오류가 발생했습니다.');
+      console.error('로그인 실패, react-native 오류 : ', error);
+      Alert.alert('로그인 실패, react-native 오류.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleForgotPassword = () => {
-    Alert.alert('비밀번호 찾기', '비밀번호 찾기 기능을 구현해주세요.');
-  };
+    Alert.alert('비밀번호 찾기', '비밀번호 찾기 기능을 미구현.');
+  };  
 
   const handleSignup = () => {
     navigation.navigate('membership' as never);
   };
 
-  const handleGoBack = () => {
-    navigation.navigate('Splash' as never);
-  };
-
   return (
-    <KeyboardAvoidingView
+    <KeyboardAvoidingView // 키보드가 화면을 가릴 때 자동으로 화면 조정
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 bg-teal-50"
     >
-      <ScrollView
+      <ScrollView // 스크롤 기능
         contentContainerStyle={{ flexGrow: 1 }}
         className="flex-1"
         keyboardShouldPersistTaps="handled"
       >
-        <View className="flex-1 justify-center items-center px-4 py-8">
+        <View className="flex-1 justify-center items-center px-4 py-8"> {/* 중앙 정렬 컨테이너 */}
           {/* 카드 컨테이너 */}
-          <View className="w-full max-w-sm bg-white rounded-lg shadow-lg p-6">
+          <View className="w-full max-w-sm bg-white rounded-lg shadow-lg p-6"> {/* 로그인 폼 */}
             {/* 헤더 */}
             <View className="items-center mb-8">
               <View className="mb-4">
@@ -86,15 +92,14 @@ const LoginPage: React.FC<LoginPageProps> = () => {
 
             {/* 폼 */}
             <View className="space-y-4">
-              {/* 이메일 입력 */}
+              {/* 전화번호 입력 */}
               <View className="space-y-2">
-                <Text className="text-sm font-medium text-gray-700">이메일</Text>
+                <Text className="text-sm font-medium text-gray-700">전화번호</Text>
                 <TextInput
                   className="w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
+                  placeholder="ex) 01012345678"
+                  value={number}
+                  onChangeText={setNumber}
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
@@ -104,18 +109,23 @@ const LoginPage: React.FC<LoginPageProps> = () => {
               <View className="space-y-2">
                 <View className="flex-row items-center justify-between">
                   <Text className="text-sm font-medium text-gray-700">비밀번호</Text>
-                  <TouchableOpacity onPress={handleForgotPassword}>
-                    <Text className="text-xs text-teal-600">비밀번호 찾기</Text>
-                  </TouchableOpacity>
                 </View>
                 <TextInput
                   className="w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900"
-                  placeholder="••••••••"
+                  placeholder="••••••"
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry
                 />
               </View>
+
+                {/* 비밀번호 찾기 버튼 - 로그인 버튼 아래 오른쪽 정렬 */}
+              <View className="flex-row justify-end mt-2 mb-4">
+                <TouchableOpacity onPress={handleForgotPassword}>
+                  <Text className="text-xs text-teal-600">비밀번호 찾기</Text>
+                </TouchableOpacity>
+              </View>
+
 
               {/* 로그인 버튼 */}
               <TouchableOpacity
@@ -134,6 +144,7 @@ const LoginPage: React.FC<LoginPageProps> = () => {
                   <Text className="text-white font-medium">로그인</Text>
                 )}
               </TouchableOpacity>
+
             </View>
 
             {/* 회원가입 링크 */}
@@ -145,15 +156,6 @@ const LoginPage: React.FC<LoginPageProps> = () => {
                 </Text>
               </Text>
             </View>
-
-            {/* 뒤로가기 버튼 */}
-            <TouchableOpacity
-              className="mt-6 w-full py-3 flex-row items-center justify-center"
-              onPress={handleGoBack}
-            >
-              <ArrowLeft size={16} color="#0f766e" />
-              <Text className="text-teal-700 ml-2">처음으로 돌아가기</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
