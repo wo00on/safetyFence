@@ -1,5 +1,6 @@
 import Global from '@/constants/Global';
 import { useNavigation } from '@react-navigation/native'; // 페이지간 이동 담당
+import axios from 'axios';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -13,8 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-
-
+ 
 interface LoginPageProps {}
 
 const LoginPage: React.FC<LoginPageProps> = () => {
@@ -24,42 +24,34 @@ const LoginPage: React.FC<LoginPageProps> = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
+  setIsLoading(true);
+  try {
+    const httpResponse = await axios.post(`${Global.URL}/login/signIn`, {
+      number,
+      password,
+    });
 
-    setIsLoading(true);
-    try {
-      const response = await fetch(`${Global.URL}/login/signIn`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ number, password }),
-      });
+    // response.data 안에 실제 서버 응답 데이터가 들어있음
+    Global.NUMBER = number;
+    // 로그인 성공 처리 (토큰 저장 등)
+    navigation.navigate('SelectRole' as never);
 
-      const errorResponse = await response.json();
-
-      if (!response.ok) {
-        Alert.alert('로그인 실패', errorResponse.message);
-        return;
-      }
-
-      Global.NUMBER = number;
-      // 로그인 성공 처리 (토큰 저장 등)
-      navigation.navigate('SelectRole' as never);
-
-    } catch (error) {
-      console.error('로그인 실패, react-native 오류 : ', error);
-      Alert.alert('로그인 실패, react-native 오류.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  } catch (error: any) {
+    // axios 에러는 error.response.data.message 형태로 서버 메시지를 가짐
+    const message = error.response?.data?.message || '로그인 실패, react-native 오류.';
+    Alert.alert('로그인 실패', message);
+    console.error('로그인 실패 : ', error);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleForgotPassword = () => {
-    Alert.alert('비밀번호 찾기', '비밀번호 찾기 기능을 미구현.');
+    Alert.alert('비밀번호 찾기', '추후 추가될 서비스 입니다.');
   };  
 
   const handleSignup = () => {
-    navigation.navigate('membership' as never);
+    navigation.navigate('Signup' as never);
   };
 
   return (

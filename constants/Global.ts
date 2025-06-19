@@ -1,5 +1,5 @@
 const Global = {
-  URL: 'http://192.168.45.167:8080',
+  URL: 'http://192.168.45.56:8080',
   NUMBER : "",
   TARGET_NUMBER: ""
 };
