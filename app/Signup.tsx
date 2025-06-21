@@ -187,6 +187,7 @@ const SignupPage: React.FC = () => {
 
       const response = await axios.post(`${Global.URL}/login/newUser`, signupData);
       console.log('서버 응답:', response.data);
+      Global.NUMBER = signupData.number;
 
       Alert.alert(
         "🎉 회원가입 완료",

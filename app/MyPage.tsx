@@ -221,7 +221,7 @@ const MyPage: React.FC = () => {
 
               <View className="space-y-4">
                 <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-1">이름</Text>
+                  <Text className="text-sm font-bold text-gray-700 mb-1">이름</Text>
                   <Text className="text-sm font-medium">{userData.name}</Text>
                 </View>
 
