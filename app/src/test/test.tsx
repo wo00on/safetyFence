@@ -2,7 +2,6 @@ import Global from '@/constants/Global';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import {
-  Bell,
   ChevronRight,
   LogOut,
   MapPin,
@@ -91,12 +90,7 @@ const MyPage: React.FC = () => {
       // 실제 구현에서는 서버 API 호출
       await new Promise((resolve) => setTimeout(resolve, 1000));
       setIsPasswordModalOpen(false);
-
-      // api 요청
       setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-
-
-
       Alert.alert('성공', '비밀번호가 변경되었습니다.');
     } catch (error) {
       console.error('비밀번호 변경 실패:', error);
@@ -128,12 +122,6 @@ const MyPage: React.FC = () => {
     );
   };
 
-  const Badge: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <View className="border border-gray-300 rounded-full px-2 py-1">
-      <Text className="text-xs text-gray-600">{children}</Text>
-    </View>
-  );
-
   const Card: React.FC<{ children: React.ReactNode; className?: string }> = ({ 
     children, 
     className = "" 
@@ -144,7 +132,7 @@ const MyPage: React.FC = () => {
   );
 
   const CardHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <View className="p-3 border-b border-gray-100">{children}</View>
+    <View className="p-4 border-b border-gray-100">{children}</View>
   );
 
   const CardContent: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -187,17 +175,15 @@ const MyPage: React.FC = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }}>
-        <View className="w-full px-4 space-y-6 pb-24">
+      <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}>
+        <View className="max-w-2xl mx-auto space-y-6 pb-24">
           {/* 헤더 */}
           <View className="flex-row items-center justify-between">
-            <Text className="text-2xl font-bold text-gray-900 ml-3">마이페이지</Text>
+            <Text className="text-2xl font-bold text-gray-900">마이페이지</Text>
           </View>
 
-          <Text>{}</Text>
-
           {/* 프로필 카드 */}
-          <Card className="mb-3">
+          <Card>
             <CardHeader>
               <View className="flex-row items-center">
                 <User size={20} color="#6B7280" />
@@ -212,47 +198,14 @@ const MyPage: React.FC = () => {
                 <View className="flex-1">
                   <Text className="text-xl font-semibold">{userData.name}</Text>
                   <View className="mt-1">
-                    <Badge>
-                      {Global.USER_ROLE === 'supporter' ? '보호자' : '이용자'}
-                    </Badge>                    
                   </View>
                 </View>
-              </View>
-
-              <View className="space-y-4">
-                <View>
-                  <Text className="text-sm font-bold text-gray-700 mb-1">이름</Text>
-                  <Text className="text-sm font-medium">{userData.name}</Text>
-                </View>
-
-                <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-1">전화번호</Text>
-                  <Text className="text-sm font-medium">{userData.number}</Text>
-                </View>
-
-                <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-1">주소</Text>
-                  <View>
-                    <Text className="text-sm font-medium">{userData.homeStreetAddress}</Text>
-                    <Text className="text-sm text-gray-600">{userData.homeStreetAddressDetail}</Text>
-                  </View>
-                </View>
-
-                {Global.USER_ROLE === 'user' && (
-                  <View className="mt-4">
-                    <Text className="text-sm font-medium text-gray-700 mb-1">센터 주소</Text>
-                    <Text className="text-sm font-medium">{userData.centerStreetAddress}</Text>
-
-                    <Text className="text-sm font-medium text-gray-700 mt-3 mb-1">링크 코드</Text>
-                    <Text className="text-sm font-medium">{userData.linkCode}</Text>
-                  </View>
-                 )}
               </View>
             </CardContent>
           </Card>
           
           {/* 계정 설정 */}
-          <Card className="mb-3">
+          <Card>
             <CardHeader>
               <View className="flex-row items-center">
                 <Settings size={20} color="#6B7280" />
@@ -375,66 +328,62 @@ const MyPage: React.FC = () => {
       </Modal>
 
       {/* 하단 네비게이션 */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-8">
-        <View className="flex-row justify-center max-w-2xl mx-auto">
-          {Global.USER_ROLE === 'user' ? (
-            // 이용자용 네비게이션
-            <View className="flex-row space-x-16">
-              <TouchableOpacity
-                onPress={() => navigation.navigate('MapPage' as never)}
-                className="items-center py-2 px-4"
-              >
-                <MapPin size={24} color="#6B7280" />
-                <Text className="text-xs text-gray-600 mt-1">지도</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => navigation.navigate('LogPage' as never)} // 기록 페이지
-                className="items-center py-2 px-4"
-              >
-                <Bell size={24} color="#6B7280" />
-                <Text className="text-xs text-gray-600 mt-1">기록</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity className="items-center py-2 px-4">
-                <User size={24} color="#2563EB" />
-                <Text className="text-xs text-blue-600 mt-1">마이페이지</Text>
-              </TouchableOpacity>
-            </View>
-
-
-          ) : Global.USER_ROLE === 'supporter' ? (
-            // 보호자용 네비게이션
-            <View className="flex-row space-x-8">
-              <TouchableOpacity
-                onPress={() => navigation.navigate('MapPage' as never)}
-                className="items-center py-2 px-4"
-              >
-                <MapPin size={24} color="#6B7280" />
-                <Text className="text-xs text-gray-600 mt-1">지도</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('LinkPage' as never)}
-                className="items-center py-2 px-4"
-              >
-                <Users size={24} color="#6B7280" />
-                <Text className="text-xs text-gray-600 mt-1">이용자</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('LogPage' as never)} // 기록 페이지
-                className="items-center py-2 px-4"
-              >
-                <Bell size={24} color="#6B7280" />
-                <Text className="text-xs text-gray-600 mt-1">기록</Text>
-              </TouchableOpacity>
-              <TouchableOpacity className="items-center py-2 px-4">
-                <User size={24} color="#2563EB" />
-                <Text className="text-xs text-blue-600 mt-1">마이페이지</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
-        </View>
+<View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-8">
+  <View className="flex-row justify-center max-w-2xl mx-auto">
+    {Global.USER_ROLE === 'user' ? (
+      // 이용자용 네비게이션
+      <View className="flex-row space-x-16">
+        <TouchableOpacity
+          onPress={() => navigation.navigate('main' as never)}
+          className="items-center py-2 px-4"
+        >
+          <MapPin size={24} color="#6B7280" />
+          <Text className="text-xs text-gray-600 mt-1">지도</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Records' as never)} // 기록 페이지
+          className="items-center py-2 px-4"
+        >
+          {/* 기록 아이콘 필요하면 추가 */}
+          <Text className="text-xs text-gray-600 mt-1">기록</Text>
+        </TouchableOpacity>
+        <TouchableOpacity className="items-center py-2 px-4">
+          <User size={24} color="#2563EB" />
+          <Text className="text-xs text-blue-600 mt-1">마이페이지</Text>
+        </TouchableOpacity>
       </View>
+    ) : Global.USER_ROLE === 'supporter' ? (
+      // 보호자용 네비게이션
+      <View className="flex-row space-x-8">
+        <TouchableOpacity
+          onPress={() => navigation.navigate('main' as never)}
+          className="items-center py-2 px-4"
+        >
+          <MapPin size={24} color="#6B7280" />
+          <Text className="text-xs text-gray-600 mt-1">지도</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Users' as never)}
+          className="items-center py-2 px-4"
+        >
+          <Users size={24} color="#6B7280" />
+          <Text className="text-xs text-gray-600 mt-1">이용자</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Records' as never)} // 기록 페이지
+          className="items-center py-2 px-4"
+        >
+          {/* 기록 아이콘 필요하면 추가 */}
+          <Text className="text-xs text-gray-600 mt-1">기록</Text>
+        </TouchableOpacity>
+        <TouchableOpacity className="items-center py-2 px-4">
+          <User size={24} color="#2563EB" />
+          <Text className="text-xs text-blue-600 mt-1">마이페이지</Text>
+        </TouchableOpacity>
+      </View>
+    ) : null}
+  </View>
+</View>
     </SafeAreaView>
   );
 };
