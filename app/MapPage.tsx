@@ -3,25 +3,26 @@ import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import * as Location from 'expo-location';
 import {
-  Bell,
-  Locate,
   MapPin,
   Navigation,
-  User,
-  Users
+  Plus,
+  User
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   AppState,
+  Platform,
   SafeAreaView,
   StatusBar,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { customMapStyle } from '../styles/MapPageStyles';
+import BottomNavigation from '../components/BottomNavigation';
+import GeofenceModal from '../components/GeofenceModal';
 
 interface RealTimeLocation {
   latitude: number;
@@ -38,6 +39,16 @@ interface LocationTrackingState {
   locationHistory: RealTimeLocation[];
   error: string | null;
   isLoading: boolean;
+}
+
+interface GeofenceData {
+  id: string;
+  name: string;
+  address?: string;
+  latitude: number;
+  longitude: number;
+  radius: number;
+  type?: 'permanent' | 'temporary';
 }
 
 interface UserLocation {
@@ -58,6 +69,8 @@ const MainPage: React.FC<MainPageProps> = () => {
   const locationSubscription = useRef<Location.LocationSubscription | null>(null);
 
   const [userRole, setUserRole] = useState<UserRole>(null);
+  const [geofences, setGeofences] = useState<GeofenceData[]>([]);
+  const [isGeofenceModalVisible, setIsGeofenceModalVisible] = useState(false);
 
   const [locationState, setLocationState] = useState<LocationTrackingState>({
     isTracking: false,
@@ -296,6 +309,18 @@ const MainPage: React.FC<MainPageProps> = () => {
     navigation.navigate(screenName as never);
   };
 
+  const handleGeofenceSave = (data: Omit<GeofenceData, 'id' | 'radius'>) => {
+    const newGeofence: GeofenceData = {
+      ...data,
+      id: Date.now().toString(),
+      radius: 100, // 기본 반경 100미터
+    };
+    
+    setGeofences(prev => [...prev, newGeofence]);
+    console.log('새로운 안전 영역 추가:', newGeofence);
+    Alert.alert('성공', `${newGeofence.name} 영역이 추가되었습니다.`);
+  };
+
   // 현재 표시할 위치 결정 (실시간 위치 우선)
   const getCurrentDisplayLocation = (): UserLocation | null => {
     if (locationState.currentLocation) {
@@ -326,6 +351,29 @@ const MainPage: React.FC<MainPageProps> = () => {
     longitudeDelta: 0.01,
   };
 
+  // --- Floating Buttons: 오른쪽 아래, 위: 영역추가, 아래: 현위치 ---
+  const FloatingButtons: React.FC = () => (
+    <View style={styles.fabContainer} pointerEvents="box-none">
+      <TouchableOpacity
+        style={[styles.fab, styles.fabSecondary]}
+        onPress={() => setIsGeofenceModalVisible(true)}
+        activeOpacity={0.85}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Plus size={20} color="#fff" />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.fab, styles.fabPrimary]}
+        onPress={moveToMyLocation}
+        activeOpacity={0.85}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <MapPin size={20} color="#fff" />
+      </TouchableOpacity>
+    </View>
+  );
+
   // 이용자인 경우 UI
   if (userRole === 'user') {
     return (
@@ -352,10 +400,9 @@ const MainPage: React.FC<MainPageProps> = () => {
                 provider={PROVIDER_GOOGLE}
                 style={{ flex: 1 }}
                 initialRegion={region}
-                customMapStyle={customMapStyle}
+                showsCompass={false}
                 showsUserLocation={false}
                 showsMyLocationButton={false}
-                showsCompass={false}
                 toolbarEnabled={false}
             >
               <Marker
@@ -380,60 +427,20 @@ const MainPage: React.FC<MainPageProps> = () => {
               </Marker>
             </MapView>
 
-            {/* 내 위치 버튼 */}
-            <TouchableOpacity
-                className="absolute bottom-20 right-4 bg-white p-4 rounded-full shadow-lg border border-gray-200"
-                onPress={moveToMyLocation}
-                style={{
-                  elevation: 8,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 8,
-                }}
-            >
-              <Locate size={24} color="#2563eb" />
-            </TouchableOpacity>
-          </View>
+            <FloatingButtons />
 
-          {/* 하단 네비게이션 */}
-          <View className="bg-white border-t border-gray-100 px-4 py-2"
-                style={{
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: -2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 8,
-                  elevation: 8,
-                }}
-          >
-            <View className="flex-row justify-center space-x-12">
-              <TouchableOpacity className="items-center py-3 px-4">
-                <View className="bg-blue-50 p-2 rounded-full">
-                  <MapPin size={24} color="#2563eb" />
-                </View>
-                <Text className="text-xs text-blue-600 mt-2 font-medium">지도</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                  className="items-center py-3 px-4"
-                  onPress={() => navigateToScreen('LogPage')}
-              >
-                <View className="bg-gray-50 p-2 rounded-full">
-                  <Bell size={24} color="#6b7280" />
-                </View>
-                <Text className="text-xs text-gray-600 mt-2">기록</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                  className="items-center py-3 px-4"
-                  onPress={() => navigateToScreen('MyPage')}
-              >
-                <View className="bg-gray-50 p-2 rounded-full">
-                  <User size={24} color="#6b7280" />
-                </View>
-                <Text className="text-xs text-gray-600 mt-2">마이페이지</Text>
-              </TouchableOpacity>
-            </View>
+            <BottomNavigation currentScreen="MapPage" />
+            
+            {/* 지오펜스 모달 - 원래대로 GeofenceModal 직접 사용 */}
+            <GeofenceModal
+              visible={isGeofenceModalVisible}
+              onClose={() => setIsGeofenceModalVisible(false)}
+              onSave={handleGeofenceSave}
+              initialLocation={locationState.currentLocation ? {
+                latitude: locationState.currentLocation.latitude,
+                longitude: locationState.currentLocation.longitude
+              } : undefined}
+            />
           </View>
         </SafeAreaView>
     );
@@ -464,10 +471,9 @@ const MainPage: React.FC<MainPageProps> = () => {
                 provider={PROVIDER_GOOGLE}
                 style={{ flex: 1 }}
                 initialRegion={region}
-                customMapStyle={customMapStyle}
+                showsCompass={false}
                 showsUserLocation={false}
                 showsMyLocationButton={false}
-                showsCompass={false}
                 toolbarEnabled={false}
             >
               {/* 이용자 마커 */}
@@ -497,77 +503,56 @@ const MainPage: React.FC<MainPageProps> = () => {
               </Marker>
             </MapView>
 
-            {/* 내 위치 버튼 */}
-            <TouchableOpacity
-                className="absolute bottom-20 right-4 bg-white p-4 rounded-full shadow-lg border border-gray-200"
-                onPress={moveToMyLocation}
-                style={{
-                  elevation: 8,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 8,
-                }}
-            >
-              <Locate size={24} color="#2563eb" />
-            </TouchableOpacity>
+            <FloatingButtons />
 
+            <BottomNavigation currentScreen="MapPage" />
+            
+            {/* 지오펜스 모달 - 원래대로 GeofenceModal 직접 사용 */}
+            <GeofenceModal
+              visible={isGeofenceModalVisible}
+              onClose={() => setIsGeofenceModalVisible(false)}
+              onSave={handleGeofenceSave}
+              initialLocation={locationState.currentLocation ? {
+                latitude: locationState.currentLocation.latitude,
+                longitude: locationState.currentLocation.longitude
+              } : undefined}
+            />
           </View>
-
-          {/* 하단 네비게이션*/}
-          <View className="bg-white border-t border-gray-100 px-4 py-2"
-                style={{
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: -2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 8,
-                  elevation: 8,
-                }}
-          >
-            <View className="flex-row justify-center space-x-6">
-              <TouchableOpacity className="items-center py-3 px-4">
-                <View className="bg-blue-50 p-2 rounded-full">
-                  <MapPin size={24} color="#2563eb" />
-                </View>
-                <Text className="text-xs text-blue-600 mt-2 font-medium">지도</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                  className="items-center py-3 px-4"
-                  onPress={() => navigateToScreen('LinkPage')}
-              >
-                <View className="bg-gray-50 p-2 rounded-full">
-                  <Users size={24} color="#6b7280" />
-                </View>
-                <Text className="text-xs text-gray-600 mt-2">이용자</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                  className="items-center py-3 px-4"
-                  onPress={() => navigateToScreen('LogPage')}
-              >
-                <View className="bg-gray-50 p-2 rounded-full">
-                  <Bell size={24} color="#6b7280" />
-                </View>
-                <Text className="text-xs text-gray-600 mt-2">기록</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                  className="items-center py-3 px-4"
-                  onPress={() => navigateToScreen('MyPage')}
-              >
-                <View className="bg-gray-50 p-2 rounded-full">
-                  <User size={24} color="#6b7280" />
-                </View>
-                <Text className="text-xs text-gray-600 mt-2">마이페이지</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          
         </SafeAreaView>
     );
   }
 };
 
 export default MainPage;
+
+const styles = StyleSheet.create({
+  fabContainer: {
+    position: 'absolute',
+    right: 16,
+    bottom: Platform.OS === 'ios' ? 88 : 76, // 하단 네비, safe area 여유
+    alignItems: 'center',
+    zIndex: 50,
+  },
+  fab: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12, // 버튼 간 간격
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+  },
+  fabPrimary: {
+    backgroundColor: '#2563eb',
+  },
+  fabSecondary: {
+    backgroundColor: '#0ea5a8',
+  },
+  fabAdd: {
+    backgroundColor: '#0ea5a8',
+  },
+});

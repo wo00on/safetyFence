@@ -2,16 +2,16 @@ import Global from '@/constants/Global';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import axios from 'axios';
-import { Bell, Clock, MapPin, User, Users } from 'lucide-react-native';
+import { Bell, Clock, MapPin } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   FlatList,
   SafeAreaView,
   StatusBar,
   Text,
-  TouchableOpacity,
-  View,
+  View
 } from 'react-native';
+import BottomNavigation from '../components/BottomNavigation';
 
 // 라우트 파라미터 타입 정의
 type RootStackParamList = {
@@ -113,71 +113,7 @@ const NotificationsPage: React.FC = () => {
         </View>
       </View>
 
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-8">
-        <View className="flex-row justify-center max-w-2xl mx-auto">
-          {Global.USER_ROLE === 'user' ? (
-            <View className="flex-row space-x-16">
-              <TouchableOpacity
-                onPress={() => navigation.navigate('MapPage' as never)}
-                className="items-center py-2 px-4"
-              >
-                <MapPin size={24} color="#6B7280" />
-                <Text className="text-xs text-gray-600 mt-1">지도</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => navigation.navigate('LogPage' as never)}
-                className="items-center py-2 px-4"
-              >
-                <Bell size={24} color="#2563EB" />
-                <Text className="text-xs text-blue-600 mt-1">기록</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => navigation.navigate('MyPage' as never)}
-                className="items-center py-2 px-4"
-              >
-                <User size={24} color="#6B7280" />
-                <Text className="text-xs text-gray-600 mt-1">마이페이지</Text>
-              </TouchableOpacity>
-            </View>
-          ) : Global.USER_ROLE === 'supporter' ? (
-            <View className="flex-row space-x-8">
-              <TouchableOpacity
-                onPress={() => navigation.navigate('MapPage' as never)}
-                className="items-center py-2 px-4"
-              >
-                <MapPin size={24} color="#6B7280" />
-                <Text className="text-xs text-gray-600 mt-1">지도</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => navigation.navigate('LinkPage' as never)}
-                className="items-center py-2 px-4"
-              >
-                <Users size={24} color="#6B7280" />
-                <Text className="text-xs text-gray-600 mt-1">이용자</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => navigation.navigate('LogPage' as never)}
-                className="items-center py-2 px-4"
-              >
-                <Bell size={24} color="#2563EB" />
-                <Text className="text-xs text-blue-600 mt-1">기록</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => navigation.navigate('MyPage' as never)}
-                className="items-center py-2 px-4"
-              >
-                <User size={24} color="#6B7280" />
-                <Text className="text-xs text-gray-600 mt-1">마이페이지</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
-        </View>
-      </View>
+      <BottomNavigation currentScreen="LogPage" />
     </SafeAreaView>
   );
 };

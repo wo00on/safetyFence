@@ -2,26 +2,25 @@ import Global from '@/constants/Global';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import {
-  Bell,
-  ChevronRight,
-  LogOut,
-  MapPin,
-  Settings,
-  Shield,
-  User,
-  Users
+    ChevronRight,
+    LogOut,
+    Settings,
+    Shield,
+    User
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Modal,
-  SafeAreaView,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Modal,
+    SafeAreaView,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
+import BottomNavigation from '../components/BottomNavigation';
 
 // 타입 정의
 interface UserData {
@@ -41,7 +40,7 @@ interface PasswordData {
 
 const MyPage: React.FC = () => {
   const navigation = useNavigation();
-  const [userData, setUserData] = useState<UserData>();
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState<boolean>(false);
   const [passwordData, setPasswordData] = useState<PasswordData>({
     currentPassword: "",
@@ -49,35 +48,52 @@ const MyPage: React.FC = () => {
     confirmPassword: "",
   });
 
-    useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        console.info(Global.NUMBER);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-        // 예시: Global.NUMBER를 사용자 식별값으로 서버에 요청
-        const response = await axios.post(`${Global.URL}/myPage/getInformation`,{
-          number: Global.NUMBER
-        });
-        
-        // 서버에서 받은 데이터 구조에 따라 조정 필요
-        const data = response.data;
+  const fetchUserData = async () => {
+    setLoading(true);
+    setError(null);
 
-        setUserData({
-          name: data.name,
-          number: data.number,
-          homeStreetAddress: data.homeStreetAddress,
-          homeStreetAddressDetail: data.homeStreetAddressDetail,
-          centerStreetAddress: data.centerStreetAddress,
-          linkCode: data.linkCode,
-          // 필요에 따라 추가 필드 포함
-        });
+    if (!Global.NUMBER) {
+      setError('사용자 식별값(Global.NUMBER)이 없습니다. 로그인 상태를 확인하세요.');
+      setLoading(false);
+      return;
+    }
 
-      } catch (error) {
-        console.error('사용자 정보 불러오기 실패:', error);
-        Alert.alert('오류', '사용자 정보를 불러올 수 없습니다.');
-      }
-    };
+    try {
+      console.info('fetchUserData number:', Global.NUMBER);
 
+      // 타임아웃 옵션 추가
+      const response = await axios.post(
+        `${Global.URL}/myPage/getInformation`,
+        { number: Global.NUMBER },
+        { timeout: 8000 }
+      );
+
+      const data = response.data;
+
+      // 응답 구조에 따라 아래 매핑을 조정하세요.
+      setUserData({
+        name: data.name,
+        number: data.number,
+        homeStreetAddress: data.homeStreetAddress,
+        homeStreetAddressDetail: data.homeStreetAddressDetail,
+        centerStreetAddress: data.centerStreetAddress,
+        linkCode: data.linkCode,
+      });
+    } catch (err: any) {
+      console.error('사용자 정보 불러오기 실패:', err);
+      // 네트워크/타임아웃 메시지 처리
+      const msg = err?.message || '서버 요청 실패';
+      setError(msg.includes('timeout') ? '서버 응답이 지연되고 있습니다. 네트워크를 확인하세요.' : '사용자 정보를 불러올 수 없습니다.');
+      Alert.alert('오류', '사용자 정보를 불러올 수 없습니다. 네트워크 또는 서버를 확인하세요.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchUserData();
   }, []);
 
@@ -176,10 +192,39 @@ const MyPage: React.FC = () => {
     );
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
+        <ActivityIndicator size="large" color="#2563EB" />
+        <Text className="mt-3">사용자 정보를 불러오는 중입니다...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (error && !userData) {
+    return (
+      <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center p-4">
+        <Text className="text-base text-red-600 mb-3">오류: {error}</Text>
+        <TouchableOpacity
+          onPress={fetchUserData}
+          className="bg-blue-600 px-4 py-2 rounded-md"
+        >
+          <Text className="text-white">다시 시도</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          className="mt-3 bg-gray-200 px-4 py-2 rounded-md"
+        >
+          <Text>이전 화면으로</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
   if (!userData) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
-        <Text>사용자 정보를 불러오는 중입니다...</Text>
+        <Text>사용자 정보를 불러올 수 없습니다.</Text>
       </SafeAreaView>
     );
   }
@@ -374,67 +419,7 @@ const MyPage: React.FC = () => {
         </View>
       </Modal>
 
-      {/* 하단 네비게이션 */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-8">
-        <View className="flex-row justify-center max-w-2xl mx-auto">
-          {Global.USER_ROLE === 'user' ? (
-            // 이용자용 네비게이션
-            <View className="flex-row space-x-16">
-              <TouchableOpacity
-                onPress={() => navigation.navigate('MapPage' as never)}
-                className="items-center py-2 px-4"
-              >
-                <MapPin size={24} color="#6B7280" />
-                <Text className="text-xs text-gray-600 mt-1">지도</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => navigation.navigate('LogPage' as never)} // 기록 페이지
-                className="items-center py-2 px-4"
-              >
-                <Bell size={24} color="#6B7280" />
-                <Text className="text-xs text-gray-600 mt-1">기록</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity className="items-center py-2 px-4">
-                <User size={24} color="#2563EB" />
-                <Text className="text-xs text-blue-600 mt-1">마이페이지</Text>
-              </TouchableOpacity>
-            </View>
-
-
-          ) : Global.USER_ROLE === 'supporter' ? (
-            // 보호자용 네비게이션
-            <View className="flex-row space-x-8">
-              <TouchableOpacity
-                onPress={() => navigation.navigate('MapPage' as never)}
-                className="items-center py-2 px-4"
-              >
-                <MapPin size={24} color="#6B7280" />
-                <Text className="text-xs text-gray-600 mt-1">지도</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('LinkPage' as never)}
-                className="items-center py-2 px-4"
-              >
-                <Users size={24} color="#6B7280" />
-                <Text className="text-xs text-gray-600 mt-1">이용자</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('LogPage' as never)} // 기록 페이지
-                className="items-center py-2 px-4"
-              >
-                <Bell size={24} color="#6B7280" />
-                <Text className="text-xs text-gray-600 mt-1">기록</Text>
-              </TouchableOpacity>
-              <TouchableOpacity className="items-center py-2 px-4">
-                <User size={24} color="#2563EB" />
-                <Text className="text-xs text-blue-600 mt-1">마이페이지</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
-        </View>
-      </View>
+      <BottomNavigation currentScreen="MyPage" />
     </SafeAreaView>
   );
 };

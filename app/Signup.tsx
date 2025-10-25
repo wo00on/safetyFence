@@ -1,8 +1,6 @@
 import Global from '@/constants/Global';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import type { NavigationProp } from '@react-navigation/native';
-import { useNavigation } from '@react-navigation/native';
-import axios from 'axios';
+import { useRouter } from 'expo-router';
 import { Calendar, Check, MapPin, Search, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
@@ -40,7 +38,6 @@ interface FormData {
   birth: Date | null;
   number: string;
   homeAddress: string;
-  serviceCode: "PAYPASS_SERVICE" | "CARE_SERVICE" | "ALL_SERVICE" | "NONE" | "";
   homeStreetAddress: string;
   homeStreetAddressDetail: string;
   careCenter: CareCenter | null;
@@ -52,11 +49,9 @@ type RootStackParamList = {
   SelectRole: undefined;
 };
 
-type SignupScreenNavigationProp = NavigationProp<RootStackParamList, 'Signup'>;
-
 const SignupPage: React.FC = () => {
   
-  const navigation = useNavigation<SignupScreenNavigationProp>();
+  const router = useRouter();
   const [formData, setFormData] = useState<FormData>({
     name: '',
     password: '',
@@ -64,7 +59,6 @@ const SignupPage: React.FC = () => {
     birth: null,
     number: '',
     homeAddress: '',
-    serviceCode: '',
     homeStreetAddress: '',
     homeStreetAddressDetail: '',
     careCenter: null,
@@ -172,7 +166,6 @@ const SignupPage: React.FC = () => {
       number: formData.number,
       homeAddress: formData.homeAddress,
       centerAddress: formData.careCenter?.centerAddress,
-      serviceCode: formData.serviceCode,
       homeStreetAddress: formData.homeStreetAddress,
       homeStreetAddressDetail: formData.homeStreetAddressDetail,
       centerStreetAddress: formData.careCenter?.centerStreetAddress
@@ -182,9 +175,33 @@ const SignupPage: React.FC = () => {
 
   const handleSubmit = async (): Promise<void> => {
   const signupData = prepareSignupData();
-    try {
-      console.log('유저 가입 전송 데이터: ', signupData)
+    
+    // 임시로 서버 연결 없이 테스트
+    console.log('유저 가입 전송 데이터: ', signupData)
+    Global.NUMBER = signupData.number;
 
+    Alert.alert(
+      "🎉 회원가입 완료",
+      "회원가입이 성공적으로 완료되었습니다!",
+      [
+        {
+          text: "확인",
+          onPress: () => {
+            console.log('SelectRole로 이동 시도');
+            try {
+              router.replace('/SelectRole');
+            } catch (navError) {
+              console.error('네비게이션 오류:', navError);
+              router.push('/SelectRole');
+            }
+          }
+        }
+      ]
+    );
+
+    // 실제 서버 연결 코드 (주석 처리)
+    /*
+    try {
       const response = await axios.post(`${Global.URL}/login/newUser`, signupData);
       console.log('서버 응답:', response.data);
       Global.NUMBER = signupData.number;
@@ -195,7 +212,15 @@ const SignupPage: React.FC = () => {
         [
           {
             text: "확인",
-            onPress: () => navigation.navigate('SelectRole')
+            onPress: () => {
+              console.log('SelectRole로 이동 시도');
+              try {
+                router.replace('/SelectRole');
+              } catch (navError) {
+                console.error('네비게이션 오류:', navError);
+                router.push('/SelectRole');
+              }
+            }
           }
         ]
       );
@@ -204,6 +229,7 @@ const SignupPage: React.FC = () => {
     Alert.alert("회원 가입 실패", message);
     console.error('로그인 실패 : ', error);
   }
+  */
   };
 
   // 체크박스 컴포넌트
@@ -225,18 +251,6 @@ const SignupPage: React.FC = () => {
     </TouchableOpacity>
   );
 
-  // 서비스 선택 체크박스
-  const ServiceCheckboxItem: React.FC<{
-    service: string;
-    label: string;
-  }> = ({ service, label }) => (
-    <CheckboxItem
-      id={service}
-      checked={formData.serviceCode === service}
-      onPress={() => handleInputChange("serviceCode", service as FormData['serviceCode'])}
-      label={label}
-    />
-  );
 
   // 🔧 다음 우편번호 검색 모드인 경우
   if (isPostcodeMode) {
@@ -481,30 +495,6 @@ const SignupPage: React.FC = () => {
               )}
             </View>
 
-            {/* 서비스 선택 */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>
-                이용 서비스 선택 <Text style={styles.required}>*</Text>
-              </Text>
-              <View style={styles.serviceOptions}>
-                <ServiceCheckboxItem
-                  service="PAYPASS_SERVICE"
-                  label="PAYPASS_SERVICE (결제 서비스)"
-                />
-                <ServiceCheckboxItem
-                  service="CARE_SERVICE"
-                  label="CARE_SERVICE (돌봄 서비스)"
-                />
-                <ServiceCheckboxItem
-                  service="ALL_SERVICE"
-                  label="ALL_SERVICE (전체 서비스)"
-                />
-                <ServiceCheckboxItem
-                  service="NONE"
-                  label="NONE (서비스 미선택)"
-                />
-              </View>
-            </View>
 
             {/* 회원가입 버튼 */}
             <TouchableOpacity

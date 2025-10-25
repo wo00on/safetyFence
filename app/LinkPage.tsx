@@ -2,13 +2,11 @@ import Global from '@/constants/Global';
 import { NavigationProp, useNavigation, useRoute } from '@react-navigation/native';
 import axios from 'axios';
 import {
-  Bell,
   MapPin,
   MoreVertical,
   Plus,
   Search,
-  User,
-  Users
+  User
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
@@ -22,6 +20,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import BottomNavigation from '../components/BottomNavigation';
 
 interface User {
   name: string;
@@ -233,45 +232,7 @@ const UsersScreen: React.FC = () => {
         </ScrollView>
       </TouchableOpacity>
 
-      <View className="bg-white border-t border-gray-100 px-4 py-2"
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: -2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 8,
-              elevation: 8,
-            }}
-      >
-        <View className="flex-row justify-center space-x-6">
-          <TouchableOpacity className="items-center py-3 px-4" onPress={() => navigation.navigate('MapPage')}>
-            <View className="p-2 rounded-full" style={{ backgroundColor: route.name === 'MapPage' ? '#e0f2fe' : '#f9fafb' }}>
-              <MapPin size={24} color={route.name === 'MapPage' ? '#2563eb' : '#6b7280'} />
-            </View>
-            <Text className={`text-xs mt-2 font-medium ${route.name === 'MapPage' ? 'text-blue-600' : 'text-gray-600'}`}>지도</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity className="items-center py-3 px-4" onPress={() => navigation.navigate('LinkPage')}>
-            <View className="p-2 rounded-full" style={{ backgroundColor: route.name === 'LinkPage' ? '#e0f2fe' : '#f9fafb' }}>
-              <Users size={24} color={route.name === 'LinkPage' ? '#2563eb' : '#6b7280'} />
-            </View>
-            <Text className={`text-xs mt-2 font-medium ${route.name === 'LinkPage' ? 'text-blue-600' : 'text-gray-600'}`}>이용자</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity className="items-center py-3 px-4" onPress={() => navigation.navigate('LogPage')}>
-            <View className="p-2 rounded-full" style={{ backgroundColor: route.name === 'LogPage' ? '#e0f2fe' : '#f9fafb' }}>
-              <Bell size={24} color={route.name === 'LogPage' ? '#2563eb' : '#6b7280'} />
-            </View>
-            <Text className={`text-xs mt-2 font-medium ${route.name === 'LogPage' ? 'text-blue-600' : 'text-gray-600'}`}>기록</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity className="items-center py-3 px-4" onPress={() => navigation.navigate('MyPage')}>
-            <View className="p-2 rounded-full" style={{ backgroundColor: route.name === 'MyPage' ? '#e0f2fe' : '#f9fafb' }}>
-              <User size={24} color={route.name === 'MyPage' ? '#2563eb' : '#6b7280'} />
-            </View>
-            <Text className={`text-xs mt-2 font-medium ${route.name === 'MyPage' ? 'text-blue-600' : 'text-gray-600'}`}>마이페이지</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <BottomNavigation currentScreen="LinkPage" />
 
       <Modal visible={isAddUserDialogOpen} transparent animationType="slide" onRequestClose={() => setIsAddUserDialogOpen(false)}>
         <View className="flex-1 bg-black/50 justify-center px-4">

@@ -1,6 +1,5 @@
 import Global from '@/constants/Global';
 import { useNavigation } from '@react-navigation/native'; // 페이지간 이동 담당
-import axios from 'axios';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -26,14 +25,31 @@ const LoginPage: React.FC<LoginPageProps> = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
+    // 입력값 검증
+    if (!number.trim() || !password.trim()) {
+      Alert.alert('입력 오류', '전화번호와 비밀번호를 입력해주세요.');
+      return;
+    }
+
     setIsLoading(true);
+    
+    // 임시로 서버 연결 없이 로그인 성공 처리
     try {
+      // 실제 서버 연결 코드 (주석 처리)
+      /*
       await axios.post(`${Global.URL}/login/signIn`, {
         number,
         password,
       });
+      */
+      
+      // 임시 로그인 성공 처리
       Global.NUMBER = number;
+      console.log('로그인 성공:', { number, password });
+      
+      // SelectRole 페이지로 이동
       navigation.navigate('SelectRole' as never);
+      
     } catch (error: any) {
       const message = error.response?.data?.message || '로그인 실패, react-native 오류.';
       Alert.alert('로그인 실패', message);
