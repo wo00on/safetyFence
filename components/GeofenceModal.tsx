@@ -1,15 +1,16 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Clock } from 'lucide-react-native';
+import { Clock, MapPin } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-    Alert,
-    Modal,
-    SafeAreaView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Modal,
+  SafeAreaView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
+import DaumPostcode, { DaumPostcodeData } from '../utils/DaumPostcode';
 
 interface GeofenceData {
   name: string;
@@ -44,6 +45,8 @@ const GeofenceModal: React.FC<GeofenceModalProps> = ({
 
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  const [isAddressModalVisible, setIsAddressModalVisible] = useState(false);
+  const [detailAddress, setDetailAddress] = useState('');
 
   const handleSave = () => {
     if (!formData.name.trim()) {
@@ -61,7 +64,14 @@ const GeofenceModal: React.FC<GeofenceModalProps> = ({
       return;
     }
 
-    onSave(formData);
+    const fullAddress = detailAddress 
+      ? `${formData.address} ${detailAddress}`
+      : formData.address;
+
+    onSave({
+      ...formData,
+      address: fullAddress,
+    });
     onClose();
   };
 
@@ -77,6 +87,15 @@ const GeofenceModal: React.FC<GeofenceModalProps> = ({
         setFormData(prev => ({ ...prev, endTime: selectedDate }));
       }
     }
+  };
+
+  const handleAddressSelect = (data: DaumPostcodeData) => {
+    setFormData(prev => ({
+      ...prev,
+      address: data.address,
+    }));
+    setDetailAddress('');
+    setIsAddressModalVisible(false);
   };
 
   const formatTime = (date: Date | undefined) => {
@@ -114,16 +133,28 @@ const GeofenceModal: React.FC<GeofenceModalProps> = ({
               />
             </View>
 
-            {/* 주소 */}
+            {/* 주소 영역 수정 */}
             <View className="mb-6">
               <Text className="text-sm font-medium text-gray-700 mb-2">주소</Text>
-              <TextInput
-                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900"
-                placeholder="주소를 입력하세요"
-                value={formData.address}
-                onChangeText={(text) => setFormData(prev => ({ ...prev, address: text }))}
-                placeholderTextColor="#9ca3af"
-              />
+              <TouchableOpacity
+                className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3 mb-2"
+                onPress={() => setIsAddressModalVisible(true)}
+              >
+                <MapPin size={20} color="#6b7280" />
+                <Text className="ml-3 text-gray-900">
+                  {formData.address || "주소 검색하기"}
+                </Text>
+              </TouchableOpacity>
+              
+              {formData.address && (
+                <TextInput
+                  className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900"
+                  placeholder="상세 주소를 입력하세요"
+                  value={detailAddress}
+                  onChangeText={setDetailAddress}
+                  placeholderTextColor="#9ca3af"
+                />
+              )}
             </View>
 
             {/* 영역 특성 */}
@@ -203,6 +234,30 @@ const GeofenceModal: React.FC<GeofenceModalProps> = ({
           </View>
         </View>
       </SafeAreaView>
+
+      {/* 주소 검색 모달 */}
+      <Modal
+        visible={isAddressModalVisible}
+        animationType="slide"
+        onRequestClose={() => setIsAddressModalVisible(false)}
+      >
+        <SafeAreaView style={{ flex: 1 }}>
+          <View className="flex-row items-center justify-between p-4 border-b border-gray-200">
+            <Text className="text-lg font-bold">주소 검색</Text>
+            <TouchableOpacity 
+              onPress={() => setIsAddressModalVisible(false)}
+              className="p-2"
+            >
+              <Text className="text-xl text-gray-500">✕</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <DaumPostcode
+            onSubmit={handleAddressSelect}
+            onClose={() => setIsAddressModalVisible(false)}
+          />
+        </SafeAreaView>
+      </Modal>
 
       {/* 시간 선택기 */}
       {showStartTimePicker && (
