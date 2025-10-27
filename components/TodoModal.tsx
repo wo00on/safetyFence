@@ -2,13 +2,13 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Clock } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-    Alert,
-    Modal,
-    SafeAreaView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Modal,
+  SafeAreaView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 interface TodoData {
@@ -90,8 +90,8 @@ const TodoModal: React.FC<TodoModalProps> = ({
 
           <View className="p-6">
             {/* 선택된 날짜 표시 */}
-            <View className="mb-4 p-3 bg-blue-50 rounded-lg">
-              <Text className="text-sm text-blue-600 font-medium">
+            <View className="mb-4 p-3 bg-green-50 rounded-lg">
+              <Text className="text-sm text-green-600 font-medium">
                 {formatDate(selectedDate)}에 할 일 추가
               </Text>
             </View>
@@ -136,7 +136,7 @@ const TodoModal: React.FC<TodoModalProps> = ({
 
             {/* 추가하기 버튼 */}
             <TouchableOpacity
-              className="bg-blue-600 py-4 rounded-lg"
+              className="bg-green-500 py-4 rounded-lg"
               onPress={handleSave}
             >
               <Text className="text-white text-center font-medium text-lg">추가하기</Text>

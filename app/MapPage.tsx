@@ -381,9 +381,9 @@ const MainPage: React.FC<MainPageProps> = () => {
           <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
           {/* 상단 헤더 */}
-          <View className="bg-white shadow-lg p-6">
+          <View className="bg-white shadow-lg p-2">
             <View className="items-center">
-              <Text className="text-2xl font-bold text-gray-900 mb-1">내 위치</Text>
+              <Text className="text-xl font-bold text-gray-900 mb-1">내 위치</Text>
               <Text className="text-sm text-gray-500">
                 {locationState.isTracking ? '원활한서비스를 위해 GPS 데이터를 수집 중 입니다.' : 'GPS 미작동 중 '}
               </Text>
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
   fabContainer: {
     position: 'absolute',
     right: 16,
-    bottom: Platform.OS === 'ios' ? 88 : 76, // 하단 네비, safe area 여유
+    bottom: Platform.OS === 'ios' ? 200 : 100, // 하단 네비, safe area 여유
     alignItems: 'center',
     zIndex: 50,
   },
@@ -539,7 +539,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12, // 버튼 간 간격
+    marginBottom: 20, // 버튼 간 간격
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
@@ -550,9 +550,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#2563eb',
   },
   fabSecondary: {
-    backgroundColor: '#0ea5a8',
+    backgroundColor: '#6eec6eff',
   },
   fabAdd: {
     backgroundColor: '#0ea5a8',
   },
 });
+
+//디자인 : 전체적인 색감, 영역추가(우편주소 추가), 네비게이션 바 바꾸기, 캘린더 수정, 마이페이지 
+// 

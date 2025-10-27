@@ -16,11 +16,11 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
   };
 
   const getIconColor = (screenName: string) => {
-    return currentScreen === screenName ? '#2563eb' : '#6b7280';
+    return currentScreen === screenName ? '#25eb49ff' : '#25eb49ff';
   };
 
   const getTextColor = (screenName: string) => {
-    return currentScreen === screenName ? 'text-blue-600' : 'text-gray-600';
+    return currentScreen === screenName ? 'text-black-600' : 'text-black-600';
   };
 
   const getTextWeight = (screenName: string) => {
@@ -34,7 +34,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
   if (Global.USER_ROLE === 'user') {
     // 이용자용 네비게이션
     return (
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-8">
+      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-1 pb-4">
         <View className="flex-row justify-center max-w-2xl mx-auto">
           <View className="flex-row space-x-16">
             <TouchableOpacity
@@ -44,7 +44,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
               <View className={`p-2 rounded-full ${getBackgroundColor('MapPage')}`}>
                 <MapPin size={24} color={getIconColor('MapPage')} />
               </View>
-              <Text className={`text-xs mt-1 ${getTextColor('MapPage')} ${getTextWeight('MapPage')}`}>
+              <Text className={`text-xs font-bold mt-1 ${getTextColor('MapPage')} ${getTextWeight('MapPage')}`}>
                 지도
               </Text>
             </TouchableOpacity>
@@ -56,7 +56,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
               <View className={`p-2 rounded-full ${getBackgroundColor('CalendarPage')}`}>
                 <Calendar size={24} color={getIconColor('CalendarPage')} />
               </View>
-              <Text className={`text-xs mt-1 ${getTextColor('CalendarPage')} ${getTextWeight('CalendarPage')}`}>
+              <Text className={`text-xs font-bold mt-1 ${getTextColor('CalendarPage')} ${getTextWeight('CalendarPage')}`}>
                 캘린더
               </Text>
             </TouchableOpacity>
@@ -68,7 +68,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
               <View className={`p-2 rounded-full ${getBackgroundColor('MyPage')}`}>
                 <User size={24} color={getIconColor('MyPage')} />
               </View>
-              <Text className={`text-xs mt-1 ${getTextColor('MyPage')} ${getTextWeight('MyPage')}`}>
+              <Text className={`text-xs font-bold mt-1 ${getTextColor('MyPage')} ${getTextWeight('MyPage')}`}>
                 마이페이지
               </Text>
             </TouchableOpacity>
@@ -91,7 +91,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
               <View className={`p-2 rounded-full ${getBackgroundColor('MapPage')}`}>
                 <MapPin size={24} color={getIconColor('MapPage')} />
               </View>
-              <Text className={`text-xs mt-1 ${getTextColor('MapPage')} ${getTextWeight('MapPage')}`}>
+              <Text className={`text-xs font-bold mt-1 ${getTextColor('MapPage')} ${getTextWeight('MapPage')}`}>
                 지도
               </Text>
             </TouchableOpacity>
@@ -103,7 +103,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
               <View className={`p-2 rounded-full ${getBackgroundColor('CalendarPage')}`}>
                 <Calendar size={24} color={getIconColor('CalendarPage')} />
               </View>
-              <Text className={`text-xs mt-1 ${getTextColor('CalendarPage')} ${getTextWeight('CalendarPage')}`}>
+              <Text className={`text-xs font-bold mt-1 ${getTextColor('CalendarPage')} ${getTextWeight('CalendarPage')}`}>
                 캘린더
               </Text>
             </TouchableOpacity>
@@ -115,7 +115,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
               <View className={`p-2 rounded-full ${getBackgroundColor('MyPage')}`}>
                 <User size={24} color={getIconColor('MyPage')} />
               </View>
-              <Text className={`text-xs mt-1 ${getTextColor('MyPage')} ${getTextWeight('MyPage')}`}>
+              <Text className={`text-xs font-bold mt-1 ${getTextColor('MyPage')} ${getTextWeight('MyPage')}`}>
                 마이페이지
               </Text>
             </TouchableOpacity>
@@ -127,7 +127,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
               <View className={`p-2 rounded-full ${getBackgroundColor('LinkPage')}`}>
                 <Users size={24} color={getIconColor('LinkPage')} />
               </View>
-              <Text className={`text-xs mt-1 ${getTextColor('LinkPage')} ${getTextWeight('LinkPage')}`}>
+              <Text className={`text-xs font-bold mt-1 ${getTextColor('LinkPage')} ${getTextWeight('LinkPage')}`}>
                 이용자
               </Text>
             </TouchableOpacity>
