@@ -1,5 +1,4 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Clock } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, Clock } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -37,6 +36,8 @@ const TodoModal: React.FC<TodoModalProps> = ({
   });
 
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [hours, setHours] = useState('09');
+  const [minutes, setMinutes] = useState('00');
 
   const handleSave = () => {
     if (!formData.title.trim()) {
@@ -44,7 +45,15 @@ const TodoModal: React.FC<TodoModalProps> = ({
       return;
     }
 
-    onSave(formData);
+    // 설정된 시간을 Date 객체에 반영
+    const timeToSave = new Date(formData.time);
+    timeToSave.setHours(parseInt(hours));
+    timeToSave.setMinutes(parseInt(minutes));
+
+    onSave({
+      ...formData,
+      time: timeToSave,
+    });
     onClose();
     
     // 폼 초기화
@@ -53,17 +62,49 @@ const TodoModal: React.FC<TodoModalProps> = ({
       time: new Date(),
       description: '',
     });
+    setHours('09');
+    setMinutes('00');
+    setShowTimePicker(false);
   };
 
-  const handleTimeChange = (event: any, selectedDate?: Date) => {
-    setShowTimePicker(false);
-    if (selectedDate) {
-      setFormData(prev => ({ ...prev, time: selectedDate }));
+  const adjustHours = (increment: number) => {
+    const current = parseInt(hours);
+    let newValue = current + increment;
+    if (newValue < 0) newValue = 23;
+    if (newValue > 23) newValue = 0;
+    setHours(newValue.toString().padStart(2, '0'));
+  };
+
+  const adjustMinutes = (increment: number) => {
+    const current = parseInt(minutes);
+    let newValue = current + increment;
+    if (newValue < 0) newValue = 55;
+    if (newValue > 59) newValue = 0;
+    setMinutes(newValue.toString().padStart(2, '0'));
+  };
+
+  const handleHoursChange = (text: string) => {
+    const num = text.replace(/[^0-9]/g, '');
+    if (num === '') {
+      setHours('00');
+    } else {
+      const value = parseInt(num);
+      if (value >= 0 && value <= 23) {
+        setHours(value.toString().padStart(2, '0'));
+      }
     }
   };
 
-  const formatTime = (date: Date) => {
-    return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+  const handleMinutesChange = (text: string) => {
+    const num = text.replace(/[^0-9]/g, '');
+    if (num === '') {
+      setMinutes('00');
+    } else {
+      const value = parseInt(num);
+      if (value >= 0 && value <= 59) {
+        setMinutes(value.toString().padStart(2, '0'));
+      }
+    }
   };
 
   const formatDate = (dateStr: string) => {
@@ -84,7 +125,7 @@ const TodoModal: React.FC<TodoModalProps> = ({
           <View className="flex-row items-center justify-between p-6 border-b border-gray-200">
             <Text className="text-xl font-bold text-gray-900">할 일 추가</Text>
             <TouchableOpacity onPress={onClose} className="p-2">
-              <Text className="text-2xl text-gray-400">‹</Text>
+              <Text className="text-2xl text-gray-400">×</Text>
             </TouchableOpacity>
           </View>
 
@@ -111,13 +152,62 @@ const TodoModal: React.FC<TodoModalProps> = ({
             {/* 시간 설정 */}
             <View className="mb-6">
               <Text className="text-sm font-medium text-gray-700 mb-2">시간</Text>
-              <TouchableOpacity
-                className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3"
-                onPress={() => setShowTimePicker(true)}
-              >
-                <Clock size={20} color="#6b7280" />
-                <Text className="ml-3 text-gray-900">{formatTime(formData.time)}</Text>
-              </TouchableOpacity>
+              {!showTimePicker ? (
+                <TouchableOpacity
+                  className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3"
+                  onPress={() => setShowTimePicker(true)}
+                >
+                  <Clock size={20} color="#6b7280" />
+                  <Text className="ml-3 text-gray-900">{hours}:{minutes}</Text>
+                </TouchableOpacity>
+              ) : (
+                <View className="border border-gray-300 rounded-lg p-4">
+                  <View className="flex-row justify-center items-center">
+                    {/* 시간 선택 */}
+                    <View className="items-center">
+                      <TouchableOpacity onPress={() => adjustHours(1)} className="p-2">
+                        <ChevronUp size={24} color="#6b7280" />
+                      </TouchableOpacity>
+                      <TextInput
+                        className="border border-gray-300 rounded-lg w-16 h-12 text-center text-xl font-medium text-gray-900"
+                        value={hours}
+                        onChangeText={handleHoursChange}
+                        keyboardType="number-pad"
+                        maxLength={2}
+                      />
+                      <TouchableOpacity onPress={() => adjustHours(-1)} className="p-2">
+                        <ChevronDown size={24} color="#6b7280" />
+                      </TouchableOpacity>
+                    </View>
+
+                    <Text className="text-2xl font-medium text-gray-900 mx-3">:</Text>
+
+                    {/* 분 선택 */}
+                    <View className="items-center">
+                      <TouchableOpacity onPress={() => adjustMinutes(5)} className="p-2">
+                        <ChevronUp size={24} color="#6b7280" />
+                      </TouchableOpacity>
+                      <TextInput
+                        className="border border-gray-300 rounded-lg w-16 h-12 text-center text-xl font-medium text-gray-900"
+                        value={minutes}
+                        onChangeText={handleMinutesChange}
+                        keyboardType="number-pad"
+                        maxLength={2}
+                      />
+                      <TouchableOpacity onPress={() => adjustMinutes(-5)} className="p-2">
+                        <ChevronDown size={24} color="#6b7280" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    className="bg-gray-100 py-2 rounded-lg mt-3"
+                    onPress={() => setShowTimePicker(false)}
+                  >
+                    <Text className="text-gray-700 text-center font-medium">확인</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
 
             {/* 설명 (선택사항) */}
@@ -144,16 +234,6 @@ const TodoModal: React.FC<TodoModalProps> = ({
           </View>
         </View>
       </SafeAreaView>
-
-      {/* 시간 선택기 */}
-      {showTimePicker && (
-        <DateTimePicker
-          value={formData.time}
-          mode="time"
-          display="default"
-          onChange={handleTimeChange}
-        />
-      )}
     </Modal>
   );
 };
