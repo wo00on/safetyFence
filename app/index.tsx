@@ -70,9 +70,9 @@ const LoginPage: React.FC = () => {
           <View className="w-full max-w-sm mx-auto">
             {/* 로고 및 헤더 섹션 */}
             <View className="items-center mb-12">
-              <View className="bg-white rounded-full p-5 shadow-md mb-6 overflow-hidden">
+              <View className="mb-5 overflow-hidden">
                 <Image
-                  source={require('../assets/images/icon_sample2.png')}
+                  source={require('../assets/images/logo.png')}
                   className="w-20 h-20 rounded-full" // 여기에 rounded-full을 직접 적용하여 이미지를 완전한 원으로 만듭니다.
                   resizeMode="cover"
                 />

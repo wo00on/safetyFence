@@ -11,68 +11,63 @@ interface BottomNavigationProps {
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) => {
   const navigation = useNavigation();
 
+  const activeColor = '#16a34a';
+  const inactiveColor = '#6b7280';
+
   const navigateToScreen = (screenName: string): void => {
     navigation.navigate(screenName as never);
   };
 
   const getIconColor = (screenName: string) => {
-    return currentScreen === screenName ? '#25eb49ff' : '#25eb49ff';
+    return currentScreen === screenName ? activeColor : inactiveColor;
   };
 
   const getTextColor = (screenName: string) => {
-    return currentScreen === screenName ? 'text-black-600' : 'text-black-600';
+    return currentScreen === screenName ? 'text-green-600' : 'text-gray-500';
   };
 
   const getTextWeight = (screenName: string) => {
-    return currentScreen === screenName ? 'font-medium' : '';
-  };
-
-  const getBackgroundColor = (screenName: string) => {
-    return currentScreen === screenName ? 'bg-blue-50' : 'bg-gray-50';
+    return currentScreen === screenName ? 'font-bold' : 'font-normal';
   };
 
   if (Global.USER_ROLE === 'user') {
     // 이용자용 네비게이션
     return (
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-1 pb-4">
-        <View className="flex-row justify-center max-w-2xl mx-auto">
-          <View className="flex-row space-x-16">
-            <TouchableOpacity
-              onPress={() => navigateToScreen('MapPage')}
-              className="items-center py-2 px-4"
-            >
-              <View className={`p-2 rounded-full ${getBackgroundColor('MapPage')}`}>
-                <MapPin size={24} color={getIconColor('MapPage')} />
-              </View>
-              <Text className={`text-xs font-bold mt-1 ${getTextColor('MapPage')} ${getTextWeight('MapPage')}`}>
-                지도
-              </Text>
-            </TouchableOpacity>
+      <View className="absolute bottom-0 left-0 right-0 bg-white/90 border-t border-gray-200/60 p-1 pb-4">
+        {/* [수정] justify-around -> justify-evenly 로 변경하여 간격 확보 */}
+        <View className="flex-row justify-evenly max-w-2xl mx-auto">
+          {/* --- 지도 --- */}
+          <TouchableOpacity
+            onPress={() => navigateToScreen('MapPage')}
+            className="items-center py-2 px-4"
+          >
+            <MapPin size={26} color={getIconColor('MapPage')} />
+            <Text style={{ fontFamily: 'System' }} className={`text-sm mt-1 ${getTextColor('MapPage')} ${getTextWeight('MapPage')}`}>
+              지도
+            </Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => navigateToScreen('CalendarPage')}
-              className="items-center py-2 px-4"
-            >
-              <View className={`p-2 rounded-full ${getBackgroundColor('CalendarPage')}`}>
-                <Calendar size={24} color={getIconColor('CalendarPage')} />
-              </View>
-              <Text className={`text-xs font-bold mt-1 ${getTextColor('CalendarPage')} ${getTextWeight('CalendarPage')}`}>
-                캘린더
-              </Text>
-            </TouchableOpacity>
+          {/* --- 캘린더 --- */}
+          <TouchableOpacity
+            onPress={() => navigateToScreen('CalendarPage')}
+            className="items-center py-2 px-4"
+          >
+            <Calendar size={26} color={getIconColor('CalendarPage')} />
+            <Text style={{ fontFamily: 'System' }} className={`text-sm mt-1 ${getTextColor('CalendarPage')} ${getTextWeight('CalendarPage')}`}>
+              캘린더
+            </Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => navigateToScreen('MyPage')}
-              className="items-center py-2 px-4"
-            >
-              <View className={`p-2 rounded-full ${getBackgroundColor('MyPage')}`}>
-                <User size={24} color={getIconColor('MyPage')} />
-              </View>
-              <Text className={`text-xs font-bold mt-1 ${getTextColor('MyPage')} ${getTextWeight('MyPage')}`}>
-                마이페이지
-              </Text>
-            </TouchableOpacity>
-          </View>
+          {/* --- 마이페이지 --- */}
+          <TouchableOpacity
+            onPress={() => navigateToScreen('MyPage')}
+            className="items-center py-2 px-4"
+          >
+            <User size={26} color={getIconColor('MyPage')} />
+            <Text style={{ fontFamily: 'System' }} className={`text-sm mt-1 ${getTextColor('MyPage')} ${getTextWeight('MyPage')}`}>
+              마이페이지
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -81,57 +76,52 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
   if (Global.USER_ROLE === 'supporter') {
     // 보호자용 네비게이션
     return (
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-8">
-        <View className="flex-row justify-center max-w-2xl mx-auto">
-          <View className="flex-row space-x-8">
-            <TouchableOpacity
-              onPress={() => navigateToScreen('MapPage')}
-              className="items-center py-2 px-4"
-            >
-              <View className={`p-2 rounded-full ${getBackgroundColor('MapPage')}`}>
-                <MapPin size={24} color={getIconColor('MapPage')} />
-              </View>
-              <Text className={`text-xs font-bold mt-1 ${getTextColor('MapPage')} ${getTextWeight('MapPage')}`}>
-                지도
-              </Text>
-            </TouchableOpacity>
+      <View className="absolute bottom-0 left-0 right-0 bg-white/90 border-t border-gray-200/60 p-1 pb-4">
+        {/* [수정] justify-around -> justify-evenly 로 변경하여 간격 확보 */}
+        <View className="flex-row justify-evenly max-w-2xl mx-auto">
+          {/* --- 지도 --- */}
+          <TouchableOpacity
+            onPress={() => navigateToScreen('MapPage')}
+            className="items-center py-2 px-4"
+          >
+            <MapPin size={26} color={getIconColor('MapPage')} />
+            <Text style={{ fontFamily: 'System' }} className={`text-sm mt-1 ${getTextColor('MapPage')} ${getTextWeight('MapPage')}`}>
+              지도
+            </Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => navigateToScreen('CalendarPage')}
-              className="items-center py-2 px-4"
-            >
-              <View className={`p-2 rounded-full ${getBackgroundColor('CalendarPage')}`}>
-                <Calendar size={24} color={getIconColor('CalendarPage')} />
-              </View>
-              <Text className={`text-xs font-bold mt-1 ${getTextColor('CalendarPage')} ${getTextWeight('CalendarPage')}`}>
-                캘린더
-              </Text>
-            </TouchableOpacity>
+          {/* --- 캘린더 --- */}
+          <TouchableOpacity
+            onPress={() => navigateToScreen('CalendarPage')}
+            className="items-center py-2 px-4"
+          >
+            <Calendar size={26} color={getIconColor('CalendarPage')} />
+            <Text style={{ fontFamily: 'System' }} className={`text-sm mt-1 ${getTextColor('CalendarPage')} ${getTextWeight('CalendarPage')}`}>
+              캘린더
+            </Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => navigateToScreen('MyPage')}
-              className="items-center py-2 px-4"
-            >
-              <View className={`p-2 rounded-full ${getBackgroundColor('MyPage')}`}>
-                <User size={24} color={getIconColor('MyPage')} />
-              </View>
-              <Text className={`text-xs font-bold mt-1 ${getTextColor('MyPage')} ${getTextWeight('MyPage')}`}>
-                마이페이지
-              </Text>
-            </TouchableOpacity>
+          {/* --- 마이페이지 --- */}
+          <TouchableOpacity
+            onPress={() => navigateToScreen('MyPage')}
+            className="items-center py-2 px-4"
+          >
+            <User size={26} color={getIconColor('MyPage')} />
+            <Text style={{ fontFamily: 'System' }} className={`text-sm mt-1 ${getTextColor('MyPage')} ${getTextWeight('MyPage')}`}>
+              마이페이지
+            </Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => navigateToScreen('LinkPage')}
-              className="items-center py-2 px-4"
-            >
-              <View className={`p-2 rounded-full ${getBackgroundColor('LinkPage')}`}>
-                <Users size={24} color={getIconColor('LinkPage')} />
-              </View>
-              <Text className={`text-xs font-bold mt-1 ${getTextColor('LinkPage')} ${getTextWeight('LinkPage')}`}>
-                이용자
-              </Text>
-            </TouchableOpacity>
-          </View>
+          {/* --- 이용자 --- */}
+          <TouchableOpacity
+            onPress={() => navigateToScreen('LinkPage')}
+            className="items-center py-2 px-4"
+          >
+            <Users size={26} color={getIconColor('LinkPage')} />
+            <Text style={{ fontFamily: 'System' }} className={`text-sm mt-1 ${getTextColor('LinkPage')} ${getTextWeight('LinkPage')}`}>
+              이용자
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     );

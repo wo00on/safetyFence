@@ -251,7 +251,7 @@ const GeofenceModal: React.FC<GeofenceModalProps> = ({
         <View className="bg-white rounded-2xl w-11/12 max-w-md">
           {/* 헤더 */}
           <View className="flex-row items-center justify-between p-6 border-b border-gray-200">
-            <Text className="text-xl font-bold text-gray-900">안전구역 추가</Text>
+            <Text className="text-xl font-bold text-green-900">안전구역 추가</Text>
             <TouchableOpacity onPress={onClose} className="p-2">
               <Text className="text-2xl text-gray-400">×</Text>
             </TouchableOpacity>
@@ -262,7 +262,7 @@ const GeofenceModal: React.FC<GeofenceModalProps> = ({
             <View className="mb-6">
               <Text className="text-sm font-medium text-gray-700 mb-2">위치 이름</Text>
               <TextInput
-                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900"
+                className="border border-green-300 rounded-lg px-4 py-3 text-gray-900"
                 placeholder="예) 병원, 경로당"
                 value={formData.name}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
@@ -274,7 +274,7 @@ const GeofenceModal: React.FC<GeofenceModalProps> = ({
             <View className="mb-6">
               <Text className="text-sm font-medium text-gray-700 mb-2">주소</Text>
               <TouchableOpacity
-                className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3 mb-2"
+                className="flex-row items-center border border-green-300 rounded-lg px-4 py-3 mb-2"
                 onPress={() => setIsAddressModalVisible(true)}
               >
                 <MapPin size={20} color="#6b7280" />
@@ -301,7 +301,7 @@ const GeofenceModal: React.FC<GeofenceModalProps> = ({
                 <TouchableOpacity
                   className={`flex-1 py-3 px-4 rounded-lg ${
                     formData.type === 'permanent'
-                      ? 'bg-blue-600'
+                      ? 'bg-green-500'
                       : 'bg-gray-200'
                   }`}
                   onPress={() => setFormData(prev => ({ ...prev, type: 'permanent' }))}
@@ -381,7 +381,7 @@ const GeofenceModal: React.FC<GeofenceModalProps> = ({
 
             {/* 추가하기 버튼 */}
             <TouchableOpacity
-              className="bg-blue-600 py-4 rounded-lg"
+              className="bg-green-500 py-4 rounded-lg"
               onPress={handleSave}
             >
               <Text className="text-white text-center font-medium text-lg">추가하기</Text>

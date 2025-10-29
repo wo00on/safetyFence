@@ -144,7 +144,7 @@ export default function SelectRolePage() {
             disabled={!selectedRole}
             className={`py-4 rounded-lg ${
               selectedRole
-                ? 'bg-blue-600 active:bg-blue-700'
+                ? 'bg-green-500 active:bg-white-700'
                 : 'bg-gray-300'
             }`}
             activeOpacity={selectedRole ? 0.8 : 1}
