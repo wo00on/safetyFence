@@ -2,6 +2,7 @@ import Global from '@/constants/Global';
 import { customMapStyle } from '@/styles/MapPageStyles';
 // 이미지 임포트 (경로 확인 필수!)
 import mapPinImage from '../assets/images/mappin.png';
+import logoImage from '../assets/images/logo.png';
 
 import axios, { isAxiosError } from 'axios';
 import * as Location from 'expo-location';
@@ -411,13 +412,15 @@ const MainPage: React.FC = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-green-50">
-      <StatusBar barStyle="dark-content" backgroundColor="#eafaf1" />
-      <View className="bg-green-100 shadow-md p-4" style={{ paddingTop: StatusBar.currentHeight || 0 }}>
-         <View className="items-center">
-           <Text style={{ fontFamily: 'System' }} className="text-xl font-bold text-green-800 mb-1">{headerText}</Text>
-           <Text style={{ fontFamily: 'System' }} className="text-sm text-green-600">{headerSubText}</Text>
-         </View>
-       </View>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
+      <View className="bg-white/90" style={{ paddingTop: StatusBar.currentHeight || 0 }}>
+        <View className="p-3">
+          <View className="border border-green-400 rounded-xl p-3 bg-green-50/50">
+            <Text style={{ fontFamily: 'System' }} className="text-lg font-bold text-green-800 text-center">{headerText}</Text>
+            <Text style={{ fontFamily: 'System' }} className="text-sm text-green-600 text-center mt-1">{headerSubText}</Text>
+          </View>
+        </View>
+      </View>
       <View className="flex-1 relative">
         {renderMapView(userLocation.name)}
         <FloatingButtons />
