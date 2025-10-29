@@ -66,6 +66,7 @@ const MainPage: React.FC = () => {
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [geofences, setGeofences] = useState<GeofenceData[]>([]);
   const [isGeofenceModalVisible, setIsGeofenceModalVisible] = useState(false);
+  const [tracksViewChanges, setTracksViewChanges] = useState(true);
 
   const [locationState, setLocationState] = useState<LocationTrackingState>({
     isTracking: false,
@@ -107,6 +108,7 @@ const MainPage: React.FC = () => {
             speed: newLocation.coords.speed || undefined,
             heading: newLocation.coords.heading || undefined,
           };
+          setTracksViewChanges(true);
           setLocationState(prev => ({
             ...prev,
             currentLocation: realTimeLocation,
@@ -156,6 +158,7 @@ const MainPage: React.FC = () => {
             speed: initialLocation.coords.speed || undefined,
             heading: initialLocation.coords.heading || undefined,
           };
+          setTracksViewChanges(true);
           setLocationState(prev => ({
             ...prev,
             currentLocation: realTimeLocation,
@@ -251,6 +254,7 @@ const MainPage: React.FC = () => {
           accuracy: currentPosition.coords.accuracy || 0,
           timestamp: currentPosition.timestamp,
         };
+        setTracksViewChanges(true);
         setLocationState(prev => ({ ...prev, currentLocation: location, isLoading: false, error: null }));
       } catch (error) {
         console.error('현재 위치 가져오기 오류:', error);
@@ -383,8 +387,18 @@ const MainPage: React.FC = () => {
           title={userLocation.name}
           description={locationState.isTracking ? "실시간 추적 중" : "현재 위치"}
           anchor={{ x: 0.5, y: 1 }}
-          image={mapPinImage}
-        />
+          tracksViewChanges={tracksViewChanges}
+        >
+          <Image
+            source={mapPinImage}
+            style={{
+              width: 35,
+              height: 35,
+              resizeMode: 'contain',
+            }}
+            onLoad={() => setTracksViewChanges(false)}
+          />
+        </Marker>
       )}
       {/* TODO: geofences 렌더링 */}
     </MapView>
