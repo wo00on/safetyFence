@@ -380,26 +380,11 @@ const MainPage: React.FC = () => {
             latitude: userLocation.lat,
             longitude: userLocation.lng,
           }}
-          title={roleSpecificTitle}
-          description={locationState.isTracking ? "실시간 추적 중" : (roleSpecificTitle === '내 위치' ? "현재 위치" : "이용자 위치")}
+          title={userLocation.name}
+          description={locationState.isTracking ? "실시간 추적 중" : "현재 위치"}
           anchor={{ x: 0.5, y: 1 }}
-        >
-          <View style={{ alignItems: 'center' }}>
-            <Image
-              source={mapPinImage}
-              style={{
-                width: 45, // 크기 조절
-                height: 45, // 크기 조절
-                resizeMode: 'center',
-              }}
-            />
-            <View className="mt-1 bg-green-50 px-3 py-1 rounded-full shadow-sm border border-green-200">
-              <Text style={{ fontFamily: 'System' }} className="text-xs font-medium text-green-800">
-                {userLocation.name}
-              </Text>
-            </View>
-          </View>
-        </Marker>
+          image={mapPinImage}
+        />
       )}
       {/* TODO: geofences 렌더링 */}
     </MapView>
