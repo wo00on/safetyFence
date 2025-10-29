@@ -206,7 +206,7 @@ const UsersScreen: React.FC = () => {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-gray-50 pt-safe">
       <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
       <TouchableOpacity className="flex-1" activeOpacity={1} onPress={() => setShowDropdown(null)}>
         <ScrollView className="flex-1 px-4">

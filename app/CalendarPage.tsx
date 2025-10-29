@@ -239,7 +239,7 @@ const CalendarPage: React.FC = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100">
+    <SafeAreaView className="flex-1 bg-gray-100 pt-safe">
       <StatusBar barStyle="dark-content" backgroundColor="#f3f4f6" />
       
       <ScrollView 

@@ -1,21 +1,38 @@
 import Global from '@/constants/Global';
+import { useRouter } from 'expo-router'; // Import useRouter
 import { useNavigation } from '@react-navigation/native';
 import { Calendar, MapPin, User, Users } from 'lucide-react-native';
-import React from 'react';
+import React, { useEffect } from 'react'; // Import useEffect
 import { Text, TouchableOpacity, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // Import AsyncStorage
 
 interface BottomNavigationProps {
   currentScreen?: string;
 }
 
+type BottomTabScreenName = 'MapPage' | 'CalendarPage' | 'MyPage' | 'LinkPage';
+
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) => {
   const navigation = useNavigation();
+  const router = useRouter(); // Initialize useRouter
 
   const activeColor = '#16a34a'; // 활성 (녹색)
   const inactiveColor = '#6b7280'; // 비활성 (회색)
 
-  const navigateToScreen = (screenName: string): void => {
-    navigation.navigate(screenName as never);
+  useEffect(() => {
+    const loadUserRole = async () => {
+      if (!Global.USER_ROLE) {
+        const storedRole = await AsyncStorage.getItem('userRole');
+        if (storedRole === 'user' || storedRole === 'supporter') {
+          Global.USER_ROLE = storedRole;
+        }
+      }
+    };
+    loadUserRole();
+  }, []); // Run once on mount
+
+  const navigateToScreen = (screenName: BottomTabScreenName): void => {
+    router.replace(`/${screenName}`); // Use router.replace for tab navigation
   };
 
   const getIconColor = (screenName: string) => {

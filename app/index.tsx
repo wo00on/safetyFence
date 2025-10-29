@@ -59,7 +59,7 @@ const LoginPage: React.FC = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 20}
       style={{ flex: 1 }}
-      className="bg-green-50"
+      className="bg-green-50 pt-safe"
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView

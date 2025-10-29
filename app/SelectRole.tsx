@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // Import AsyncStorage
 
 type UserRole = 'user' | 'supporter' | null;
 
@@ -26,6 +27,7 @@ export default function SelectRolePage() {
         console.log('선택한 역할:', selectedRole);
 
         Global.USER_ROLE = selectedRole;
+        await AsyncStorage.setItem('userRole', selectedRole); // Save to AsyncStorage
 
         if (Global.USER_ROLE === 'user') {
           router.push(`/MapPage`);
@@ -43,7 +45,7 @@ export default function SelectRolePage() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-gray-50 pt-safe">
       <View className="flex-1 justify-center px-4">
         {/* 메인 카드 */}
         <View className="bg-white rounded-lg shadow-sm p-6 mx-4">

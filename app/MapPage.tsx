@@ -1,10 +1,9 @@
 import Global from '@/constants/Global';
 import { customMapStyle } from '@/styles/MapPageStyles';
-import { useNavigation } from '@react-navigation/native';
 // 이미지 임포트 (경로 확인 필수!)
 import mapPinImage from '../assets/images/mappin.png';
 
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 import * as Location from 'expo-location';
 import {
   MapPin, // FAB 버튼용 MapPin은 유지
@@ -59,17 +58,12 @@ interface UserLocation {
   status: string;
 }
 type UserRole = 'user' | 'supporter' | null;
-interface MainPageProps {}
 
-
-const MainPage: React.FC<MainPageProps> = () => {
-  const navigation = useNavigation();
-
+const MainPage: React.FC = () => {
   const mapRef = useRef<MapView>(null);
   const locationSubscription = useRef<Location.LocationSubscription | null>(null);
 
   const [userRole, setUserRole] = useState<UserRole>(null);
-  const [geofences, setGeofences] = useState<GeofenceData[]>([]);
   const [isGeofenceModalVisible, setIsGeofenceModalVisible] = useState(false);
 
   const [locationState, setLocationState] = useState<LocationTrackingState>({
@@ -181,7 +175,6 @@ const MainPage: React.FC<MainPageProps> = () => {
       }
     }; // initializeApp 닫는 괄호
     initializeApp();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startLocationTracking, moveToLocation]);
 
 
@@ -222,7 +215,7 @@ const MainPage: React.FC<MainPageProps> = () => {
         }, { headers: { 'Content-Type': 'application/json' }, timeout: 10000 });
         console.log('위치 전송 성공:', httpResponse.status);
       } catch (error) {
-        if (axios.isAxiosError(error)) {
+        if (isAxiosError(error)) {
            console.error('서버 위치 전송 Axios 오류:', error.message, error.response?.status);
         } else {
            console.error('서버 위치 전송 일반 오류:', error);
@@ -237,15 +230,6 @@ const MainPage: React.FC<MainPageProps> = () => {
 
     return () => clearInterval(intervalId);
   }, [locationState.currentLocation, locationState.isTracking, userRole]);
-
-  const stopLocationTracking = useCallback(() => {
-    if (locationSubscription.current) {
-      locationSubscription.current.remove();
-      locationSubscription.current = null;
-      setLocationState(prev => ({ ...prev, isTracking: false }));
-      console.log('Location tracking stopped.');
-    }
-  }, []); // useCallback 닫는 괄호
 
   const moveToMyLocation = async () => {
     let location = locationState.currentLocation;
@@ -279,11 +263,6 @@ const MainPage: React.FC<MainPageProps> = () => {
       moveToLocation(location);
     }
   }; // moveToMyLocation 닫는 괄호
-
-
-  const navigateToScreen = (screenName: string): void => {
-    navigation.navigate(screenName as never);
-  };
 
   const handleGeofenceSave = (data: Omit<GeofenceData, 'id' | 'radius'>) => {
     const newGeofence: GeofenceData = {
@@ -433,7 +412,7 @@ const MainPage: React.FC<MainPageProps> = () => {
   return (
     <SafeAreaView className="flex-1 bg-green-50">
       <StatusBar barStyle="dark-content" backgroundColor="#eafaf1" />
-      <View className="bg-green-100 shadow-md p-4">
+      <View className="bg-green-100 shadow-md p-4" style={{ paddingTop: StatusBar.currentHeight || 0 }}>
          <View className="items-center">
            <Text style={{ fontFamily: 'System' }} className="text-xl font-bold text-green-800 mb-1">{headerText}</Text>
            <Text style={{ fontFamily: 'System' }} className="text-sm text-green-600">{headerSubText}</Text>
