@@ -11,8 +11,8 @@ interface BottomNavigationProps {
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) => {
   const navigation = useNavigation();
 
-  const activeColor = '#16a34a';
-  const inactiveColor = '#6b7280';
+  const activeColor = '#16a34a'; // 활성 (녹색)
+  const inactiveColor = '#6b7280'; // 비활성 (회색)
 
   const navigateToScreen = (screenName: string): void => {
     navigation.navigate(screenName as never);
@@ -23,18 +23,19 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
   };
 
   const getTextColor = (screenName: string) => {
+    // NativeWind 클래스 반환
     return currentScreen === screenName ? 'text-green-600' : 'text-gray-500';
   };
 
   const getTextWeight = (screenName: string) => {
+    // NativeWind 클래스 반환
     return currentScreen === screenName ? 'font-bold' : 'font-normal';
   };
 
   if (Global.USER_ROLE === 'user') {
-    // 이용자용 네비게이션
+    // 이용자용 네비게이션 (3개 메뉴)
     return (
       <View className="absolute bottom-0 left-0 right-0 bg-white/90 border-t border-gray-200/60 p-1 pb-4">
-        {/* [수정] justify-around -> justify-evenly 로 변경하여 간격 확보 */}
         <View className="flex-row justify-evenly max-w-2xl mx-auto">
           {/* --- 지도 --- */}
           <TouchableOpacity
@@ -58,14 +59,14 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
             </Text>
           </TouchableOpacity>
 
-          {/* --- 마이페이지 --- */}
+          {/* --- 설정 (마이페이지) --- */}
           <TouchableOpacity
-            onPress={() => navigateToScreen('MyPage')}
+            onPress={() => navigateToScreen('MyPage')} // 이동할 스크린 이름은 'MyPage' 유지
             className="items-center py-2 px-4"
           >
             <User size={26} color={getIconColor('MyPage')} />
             <Text style={{ fontFamily: 'System' }} className={`text-sm mt-1 ${getTextColor('MyPage')} ${getTextWeight('MyPage')}`}>
-              마이페이지
+              설정 {/* <-- "마이페이지"에서 "설정"으로 변경 */}
             </Text>
           </TouchableOpacity>
         </View>
@@ -74,10 +75,9 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
   }
 
   if (Global.USER_ROLE === 'supporter') {
-    // 보호자용 네비게이션
+    // 보호자용 네비게이션 (4개 메뉴)
     return (
       <View className="absolute bottom-0 left-0 right-0 bg-white/90 border-t border-gray-200/60 p-1 pb-4">
-        {/* [수정] justify-around -> justify-evenly 로 변경하여 간격 확보 */}
         <View className="flex-row justify-evenly max-w-2xl mx-auto">
           {/* --- 지도 --- */}
           <TouchableOpacity
@@ -101,14 +101,14 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
             </Text>
           </TouchableOpacity>
 
-          {/* --- 마이페이지 --- */}
+          {/* --- 설정 (마이페이지) --- */}
           <TouchableOpacity
-            onPress={() => navigateToScreen('MyPage')}
+            onPress={() => navigateToScreen('MyPage')} // 이동할 스크린 이름은 'MyPage' 유지
             className="items-center py-2 px-4"
           >
             <User size={26} color={getIconColor('MyPage')} />
             <Text style={{ fontFamily: 'System' }} className={`text-sm mt-1 ${getTextColor('MyPage')} ${getTextWeight('MyPage')}`}>
-              마이페이지
+              설정 {/* <-- "마이페이지"에서 "설정"으로 변경 */}
             </Text>
           </TouchableOpacity>
 
@@ -127,6 +127,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
     );
   }
 
+  // 역할이 없으면 네비게이션 숨김
   return null;
 };
 

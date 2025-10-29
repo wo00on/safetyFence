@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   mapIcon: {
-    marginRight: 4,
+    marginRight: 10,
   },
   careCenterAddress: {
     fontSize: 14,

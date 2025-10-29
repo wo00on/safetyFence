@@ -158,8 +158,8 @@ const UsersScreen: React.FC = () => {
     >
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center flex-1">
-          <View className="h-12 w-12 bg-blue-100 rounded-full items-center justify-center mr-4">
-            <User size={24} color="#2563eb" />
+          <View className="h-12 w-12 bg-green-100 rounded-full items-center justify-center mr-4">
+            <User size={24} color="#25eb25ff" />
           </View>
           <View className="flex-1">
             <View className="flex-row items-center">
@@ -198,7 +198,7 @@ const UsersScreen: React.FC = () => {
       </View>
       <Text className="text-lg font-medium text-gray-900">이용자가 없습니다</Text>
       <Text className="text-gray-500 mt-1 text-center">이용자 코드를 입력하여 이용자를 추가하세요</Text>
-      <TouchableOpacity className="bg-blue-600 rounded-lg px-4 py-2 flex-row items-center mt-4" onPress={() => setIsAddUserDialogOpen(true)}>
+      <TouchableOpacity className="bg-green-500 rounded-lg px-4 py-2 flex-row items-center mt-4" onPress={() => setIsAddUserDialogOpen(true)}>
         <Plus size={16} color="white" />
         <Text className="text-white font-medium ml-2">이용자 추가</Text>
       </TouchableOpacity>
@@ -212,10 +212,7 @@ const UsersScreen: React.FC = () => {
         <ScrollView className="flex-1 px-4">
           <View className="flex-row items-center justify-between py-4">
             <Text className="text-2xl font-bold text-gray-900">이용자 관리</Text>
-            <TouchableOpacity className="bg-blue-600 rounded-lg px-4 py-2 flex-row items-center" onPress={() => setIsAddUserDialogOpen(true)}>
-              <Plus size={16} color="white" />
-              <Text className="text-white font-medium ml-2">이용자 추가</Text>
-            </TouchableOpacity>
+            
           </View>
           <View className="relative mb-6">
             <View className="absolute left-3 top-1/2 transform -translate-y-1/2 z-10">

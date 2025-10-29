@@ -2,23 +2,23 @@ import Global from '@/constants/Global';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import {
-    ChevronRight,
-    LogOut,
-    Settings,
-    Shield,
-    User
+  ChevronRight,
+  LogOut,
+  Settings,
+  Shield,
+  User
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import BottomNavigation from '../components/BottomNavigation';
 
