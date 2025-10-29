@@ -316,7 +316,7 @@ const GeofenceModal: React.FC<GeofenceModalProps> = ({
                 <TouchableOpacity
                   className={`flex-1 py-3 px-4 rounded-lg ${
                     formData.type === 'temporary'
-                      ? 'bg-blue-600'
+                      ? 'bg-green-600'
                       : 'bg-gray-200'
                   }`}
                   onPress={() => setFormData(prev => ({ ...prev, type: 'temporary' }))}
