@@ -1,10 +1,10 @@
 import Global from '@/constants/Global';
-import { useRouter } from 'expo-router'; // Import useRouter
+import AsyncStorage from '@react-native-async-storage/async-storage'; // Import AsyncStorage
 import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router'; // Import useRouter
 import { Calendar, MapPin, User, Users } from 'lucide-react-native';
 import React, { useEffect } from 'react'; // Import useEffect
 import { Text, TouchableOpacity, View } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // Import AsyncStorage
 
 interface BottomNavigationProps {
   currentScreen?: string;
@@ -16,8 +16,8 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
   const navigation = useNavigation();
   const router = useRouter(); // Initialize useRouter
 
-  const activeColor = '#16a34a'; // 활성 (녹색)
-  const inactiveColor = '#6b7280'; // 비활성 (회색)
+  const activeColor = '#20e066ff'; // 활성 (녹색)
+  const inactiveColor = '#9ba5baff'; // 비활성 (회색)
 
   useEffect(() => {
     const loadUserRole = async () => {

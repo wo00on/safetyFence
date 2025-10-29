@@ -64,6 +64,7 @@ const MainPage: React.FC = () => {
   const locationSubscription = useRef<Location.LocationSubscription | null>(null);
 
   const [userRole, setUserRole] = useState<UserRole>(null);
+  const [geofences, setGeofences] = useState<GeofenceData[]>([]);
   const [isGeofenceModalVisible, setIsGeofenceModalVisible] = useState(false);
 
   const [locationState, setLocationState] = useState<LocationTrackingState>({
@@ -460,9 +461,9 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   fabPrimary: {
-    backgroundColor: '#16a34a',
+    backgroundColor: '#27f572ff',
   },
   fabSecondary: {
-    backgroundColor: '#059669',
+    backgroundColor: '#04faacff',
   },
 }); // StyleSheet 닫는 괄호
