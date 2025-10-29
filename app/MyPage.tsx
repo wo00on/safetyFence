@@ -116,7 +116,6 @@ const MyPage: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 500)); // 로딩 효과를 위한 지연
       setUserData(DUMMY_USER_DATA);
       setGeofences(DUMMY_GEOFENCES);
-      Global.USER_ROLE = 'user'; // 테스트를 위해 역할도 설정
     } catch (err: any) {
       console.error('사용자 정보 불러오기 실패:', err);
       const msg = err?.message || '더미 데이터 로드 실패';
