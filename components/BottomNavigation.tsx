@@ -50,10 +50,9 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
   };
 
   if (Global.USER_ROLE === 'user') {
-    // 이용자용 네비게이션 (3개 메뉴)
     return (
-      <View className="absolute bottom-0 left-0 right-0 bg-white/90 border-t border-gray-200/60 p-1 pb-4">
-        <View className="flex-row justify-evenly max-w-2xl mx-auto">
+      <View className="absolute bottom-4 left-4 right-4 bg-white/95 border border-gray-200/80 p-1 pb-3 rounded-2xl shadow-lg">
+        <View className="flex-row justify-evenly w-full">
           {/* --- 지도 --- */}
           <TouchableOpacity
             onPress={() => navigateToScreen('MapPage')}
@@ -94,8 +93,8 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
   if (Global.USER_ROLE === 'supporter') {
     // 보호자용 네비게이션 (4개 메뉴)
     return (
-      <View className="absolute bottom-0 left-0 right-0 bg-white/90 border-t border-gray-200/60 p-1 pb-4">
-        <View className="flex-row justify-evenly max-w-2xl mx-auto">
+      <View className="absolute bottom-4 left-4 right-4 bg-white/95 border border-gray-200/80 p-1 pb-3 rounded-2xl shadow-lg">
+        <View className="flex-row justify-evenly w-full">
           {/* --- 지도 --- */}
           <TouchableOpacity
             onPress={() => navigateToScreen('MapPage')}
