@@ -1,3 +1,4 @@
+import '../src/tasks/locationTask';
 import Global from '@/constants/Global';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';

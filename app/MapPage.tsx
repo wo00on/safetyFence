@@ -10,6 +10,7 @@ import {
   MapPin, // FAB 버튼용 MapPin은 유지
   Plus,
 } from 'lucide-react-native';
+import { Accelerometer } from 'expo-sensors';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -63,6 +64,7 @@ type UserRole = 'user' | 'supporter' | null;
 const MainPage: React.FC = () => {
   const mapRef = useRef<MapView>(null);
   const locationSubscription = useRef<Location.LocationSubscription | null>(null);
+  const stopTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [geofences, setGeofences] = useState<GeofenceData[]>([]);
@@ -85,6 +87,76 @@ const MainPage: React.FC = () => {
       longitudeDelta: 0.01,
     }, 1000);
   }, []);
+
+  const startBackgroundLocation = async () => {
+    const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
+    if (foregroundStatus !== 'granted') {
+      Alert.alert('권한 필요', '포그라운드 위치 권한이 필요합니다.');
+      return;
+    }
+  
+    const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+    if (backgroundStatus !== 'granted') {
+      Alert.alert('권한 필요', "백그라운드 위치 추적을 위해 '항상' 위치 접근 권한이 필요합니다.");
+      return;
+    }
+  
+    const isRunning = await Location.hasStartedLocationUpdatesAsync('background-location-task');
+    if (isRunning) {
+      console.log('백그라운드 위치 추적이 이미 실행 중입니다.');
+      return;
+    }
+  
+    await Location.startLocationUpdatesAsync('background-location-task', {
+      accuracy: Location.Accuracy.High,
+      timeInterval: 300000, // 5 minutes
+      distanceInterval: 50, // 50 meters
+      showsBackgroundLocationIndicator: true,
+      foregroundService: {
+        notificationTitle: '안전 울타리',
+        notificationBody: '어르신의 위치를 안전하게 공유 중입니다.',
+        notificationColor: '#34d399',
+      },
+    });
+    console.log('백그라운드 위치 추적을 시작합니다.');
+  };
+
+  const stopBackgroundLocation = async () => {
+    const isRunning = await Location.hasStartedLocationUpdatesAsync('background-location-task');
+    if (isRunning) {
+      await Location.stopLocationUpdatesAsync('background-location-task');
+      console.log('백그라운드 위치 추적을 중지합니다.');
+    }
+  };
+
+  const setupMovementDetection = () => {
+    Accelerometer.setUpdateInterval(1000);
+    const subscription = Accelerometer.addListener(accelerometerData => {
+      const { x, y, z } = accelerometerData;
+      const magnitude = Math.sqrt(x * x + y * y + z * z);
+  
+      if (magnitude > 1.1) { // 움직임 감지
+        if (stopTimeout.current) {
+          clearTimeout(stopTimeout.current);
+          stopTimeout.current = null;
+          console.log('움직임 감지됨, 위치 추적 중지 타이머 취소');
+        }
+        startBackgroundLocation();
+      } else { // 움직임 없음
+        if (!stopTimeout.current) {
+          console.log('움직임 없음, 10분 후 위치 추적 중지를 예약합니다.');
+          stopTimeout.current = setTimeout(() => {
+            stopBackgroundLocation();
+            stopTimeout.current = null;
+          }, 600000); // 10 minutes
+        }
+      }
+    });
+  
+    return () => {
+      subscription && subscription.remove();
+    };
+  };
 
   const startLocationTracking = useCallback(async () => {
     try {
@@ -129,6 +201,8 @@ const MainPage: React.FC = () => {
 
 
   useEffect(() => {
+    let cleanupMovementDetection: (() => void) | undefined;
+
     const initializeApp = async () => {
       setLocationState(prev => ({ ...prev, isLoading: true }));
       try {
@@ -140,6 +214,11 @@ const MainPage: React.FC = () => {
           console.warn('유효하지 않은 사용자 역할:', role);
            setLocationState(prev => ({ ...prev, isLoading: false, error: '사용자 역할을 확인할 수 없습니다.' }));
           return;
+        }
+
+        if (role === 'user') {
+          await startBackgroundLocation();
+          cleanupMovementDetection = setupMovementDetection();
         }
 
         const { status } = await Location.getForegroundPermissionsAsync();
@@ -178,8 +257,14 @@ const MainPage: React.FC = () => {
         console.error('앱 초기화 오류:', error);
         setLocationState(prev => ({ ...prev, isLoading: false, error: '앱 초기화 중 오류가 발생했습니다.' }));
       }
-    }; // initializeApp 닫는 괄호
+    };
     initializeApp();
+
+    return () => {
+      if (cleanupMovementDetection) {
+        cleanupMovementDetection();
+      }
+    };
   }, [startLocationTracking, moveToLocation]);
 
 

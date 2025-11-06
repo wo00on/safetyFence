@@ -9,7 +9,16 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "location",
+          "fetch"
+        ],
+        "NSLocationWhenInUseUsageDescription": "앱을 사용하는 동안 위치 정보에 접근하여 현재 위치를 지도에 표시합니다.",
+        "NSLocationAlwaysUsageDescription": "앱이 백그라운드에 있을 때도 위치를 추적하여 안전 구역 이탈을 감지합니다.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "보호자에게 위치를 공유하려면 '항상' 위치 접근 권한이 필요합니다."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,6 +30,14 @@
         "googleMaps": {
           "apiKey": "AIzaSyBwR5FvsDa4kUc3FTD14svwssHNM-tUhSM"
         }
+      },
+      "permissions": [
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE"
+      ],
+      "foregroundService": {
+        "notificationTitle": "안전 울타리",
+        "notificationBody": "어르신의 위치를 안전하게 공유 중입니다."
       }
     },
     "web": {
@@ -38,7 +55,9 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "expo-task-manager",
+      "expo-location"
     ],
     "experiments": {
       "typedRoutes": true
