@@ -9,11 +9,12 @@
     }
   },
   "include": [
-  "**/*.ts",
-  "**/*.tsx",
-  ".expo/types/**/*.ts",
-  "expo-env.d.ts",
-  "nativewind-env.d.ts",
-  "types"
-]
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts",
+    "nativewind-env.d.ts",
+    "images.d.ts",
+    "types"
+  ]
 }

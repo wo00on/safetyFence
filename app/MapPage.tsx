@@ -1,10 +1,11 @@
 import Global from '@/constants/Global';
 import { customMapStyle } from '@/styles/MapPageStyles';
-// 이미지 임포트 (경로 확인 필수!)
-import mapPinImage from '../assets/images/mappin.png';
-import logoImage from '../assets/images/logo.png';
+import { geofenceService } from '../services/geofenceService';
+import type { GeofenceItem } from '../types/api';
+import { useLocation } from '../contexts/LocationContext';
 
-import axios, { isAxiosError } from 'axios';
+import apiClient from '@/utils/api/axiosConfig';
+import { isAxiosError } from 'axios';
 import * as Location from 'expo-location';
 import {
   MapPin, // FAB 버튼용 MapPin은 유지
@@ -15,6 +16,7 @@ import {
   Alert,
   AppState,
   Image, // Image 컴포넌트 임포트 확인
+  Linking, // 설정으로 이동하기 위한 Linking 추가
   Platform,
   SafeAreaView,
   StatusBar,
@@ -23,7 +25,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'; // react-native 임포트 정리
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps'; // Marker 임포트 확인
+import MapView, { Marker, PROVIDER_GOOGLE, Circle } from 'react-native-maps'; // Circle 추가
 import BottomNavigation from '../components/BottomNavigation';
 import GeofenceModal from '../components/GeofenceModal';
 
@@ -43,15 +45,6 @@ interface LocationTrackingState {
   error: string | null;
   isLoading: boolean;
 }
-interface GeofenceData {
-  id: string;
-  name: string;
-  address?: string;
-  latitude: number;
-  longitude: number;
-  radius: number;
-  type?: 'permanent' | 'temporary';
-}
 interface UserLocation {
   lat: number;
   lng: number;
@@ -61,21 +54,24 @@ interface UserLocation {
 type UserRole = 'user' | 'supporter' | null;
 
 const MainPage: React.FC = () => {
-  const mapRef = useRef<MapView>(null);
-  const locationSubscription = useRef<Location.LocationSubscription | null>(null);
+  // Context에서 위치 및 WebSocket 상태 가져오기
+  const {
+    isTracking,
+    currentLocation,
+    error: locationError,
+    isLoading,
+    isWebSocketConnected,
+    targetLocation,
+  } = useLocation();
 
+  const mapRef = useRef<MapView>(null);
+
+  // MapPage만의 로컬 상태
   const [userRole, setUserRole] = useState<UserRole>(null);
-  const [geofences, setGeofences] = useState<GeofenceData[]>([]);
+  const [geofences, setGeofences] = useState<GeofenceItem[]>([]);
   const [isGeofenceModalVisible, setIsGeofenceModalVisible] = useState(false);
   const [tracksViewChanges, setTracksViewChanges] = useState(true);
-
-  const [locationState, setLocationState] = useState<LocationTrackingState>({
-    isTracking: false,
-    currentLocation: null,
-    locationHistory: [],
-    error: null,
-    isLoading: true, // 초기 로딩 상태 true
-  });
+  const [lastGeofenceCheck, setLastGeofenceCheck] = useState<{ [key: number]: boolean }>({});
 
   const moveToLocation = useCallback((location: RealTimeLocation) => {
     mapRef.current?.animateToRegion({
@@ -86,217 +82,198 @@ const MainPage: React.FC = () => {
     }, 1000);
   }, []);
 
-  const startLocationTracking = useCallback(async () => {
-    try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-         setLocationState(prev => ({ ...prev, isLoading: false, error: '지도 표시를 위해 위치 권한이 필요합니다. 설정에서 권한을 허용해주세요.' }));
-         return;
-      }
-
-      const subscription = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 5000,
-          distanceInterval: 10,
-        },
-        (newLocation) => {
-          const realTimeLocation: RealTimeLocation = {
-            latitude: newLocation.coords.latitude,
-            longitude: newLocation.coords.longitude,
-            accuracy: newLocation.coords.accuracy || 0,
-            timestamp: newLocation.timestamp,
-            speed: newLocation.coords.speed || undefined,
-            heading: newLocation.coords.heading || undefined,
-          };
-          setTracksViewChanges(true);
-          setLocationState(prev => ({
-            ...prev,
-            currentLocation: realTimeLocation,
-            locationHistory: [...prev.locationHistory.slice(-19), realTimeLocation],
-            isTracking: true,
-            isLoading: false,
-            error: null,
-          }));
-        }
-      ); // watchPositionAsync 닫는 괄호
-      locationSubscription.current = subscription;
-    } catch (error) {
-      console.error('실시간 위치 추적 시작 실패:', error);
-      setLocationState(prev => ({ ...prev, isLoading: false, error: '실시간 위치 추적 중 오류가 발생했습니다.' }));
+  // MapPage 초기화: userRole 설정 및 초기 위치로 지도 이동
+  useEffect(() => {
+    // 사용자 역할 설정
+    const role = Global.USER_ROLE;
+    if (role === 'user' || role === 'supporter') {
+      setUserRole(role);
+      console.log('📍 MapPage - 사용자 역할:', role);
     }
-  }, []); // useCallback 닫는 괄호
+
+    // Context에서 가져온 현재 위치로 지도 이동
+    if (currentLocation) {
+      console.log('📍 MapPage - 초기 위치로 지도 이동');
+      moveToLocation(currentLocation);
+    }
+  }, [currentLocation, moveToLocation]);
 
 
+  // 지오펜스 목록 로드
   useEffect(() => {
-    const initializeApp = async () => {
-      setLocationState(prev => ({ ...prev, isLoading: true }));
+    const loadGeofences = async () => {
+      if (!userRole) return;
+
       try {
-        const role = Global.USER_ROLE;
-        if (role === 'user' || role === 'supporter') {
-          setUserRole(role);
-        } else {
-          setUserRole(null);
-          console.warn('유효하지 않은 사용자 역할:', role);
-           setLocationState(prev => ({ ...prev, isLoading: false, error: '사용자 역할을 확인할 수 없습니다.' }));
-          return;
-        }
-
-        const { status } = await Location.getForegroundPermissionsAsync();
-        if (status !== 'granted') {
-           setLocationState(prev => ({ ...prev, isLoading: false, error: '지도 표시를 위해 위치 권한이 필요합니다.' }));
-           return;
-        }
-
-        const initialLocation = await Location.getLastKnownPositionAsync();
-
-        if (initialLocation) {
-          const realTimeLocation: RealTimeLocation = {
-            latitude: initialLocation.coords.latitude,
-            longitude: initialLocation.coords.longitude,
-            accuracy: initialLocation.coords.accuracy || 0,
-            timestamp: initialLocation.timestamp,
-            speed: initialLocation.coords.speed || undefined,
-            heading: initialLocation.coords.heading || undefined,
-          };
-          setTracksViewChanges(true);
-          setLocationState(prev => ({
-            ...prev,
-            currentLocation: realTimeLocation,
-            locationHistory: [realTimeLocation],
-            error: null,
-            isLoading: false,
-          }));
-          moveToLocation(realTimeLocation);
-        } else {
-           console.log("No last known location found, waiting for watchPosition...");
-        }
-
-        await startLocationTracking();
-
+        const data = await geofenceService.getList();
+        setGeofences(data);
+        console.log('지오펜스 목록 로드 성공:', data.length);
       } catch (error) {
-        console.error('앱 초기화 오류:', error);
-        setLocationState(prev => ({ ...prev, isLoading: false, error: '앱 초기화 중 오류가 발생했습니다.' }));
+        console.error('지오펜스 목록 로드 실패:', error);
       }
-    }; // initializeApp 닫는 괄호
-    initializeApp();
-  }, [startLocationTracking, moveToLocation]);
+    };
 
+    loadGeofences();
+  }, [userRole]);
 
+  // 지오펜스 진입 감지 (user role일 때만)
   useEffect(() => {
-    const handleAppStateChange = (nextAppState: string) => {
-      if (nextAppState.match(/inactive|background/) && locationState.isTracking) {
-         console.log('App is in background.');
-      } else if (nextAppState === 'active') {
-        console.log('App is active.');
-        if (!locationState.isTracking && userRole && !locationState.error) {
-           // startLocationTracking(); // 필요하다면 추적 재시작
+    if (userRole !== 'user' || !currentLocation || geofences.length === 0) {
+      return;
+    }
+
+    const checkGeofenceEntry = async () => {
+      const currentLat = currentLocation.latitude;
+      const currentLng = currentLocation.longitude;
+
+      // Haversine 공식으로 거리 계산 (미터 단위)
+      const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+        const R = 6371000; // 지구 반지름 (미터)
+        const dLat = ((lat2 - lat1) * Math.PI) / 180;
+        const dLon = ((lon2 - lon1) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos((lat1 * Math.PI) / 180) *
+            Math.cos((lat2 * Math.PI) / 180) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+      };
+
+      for (const fence of geofences) {
+        const distance = calculateDistance(currentLat, currentLng, fence.latitude, fence.longitude);
+        const radius = 200; // 기본 반경 200미터
+        const isInside = distance <= radius;
+
+        // 진입 감지: 이전에 밖에 있었는데 지금 안에 들어옴
+        if (isInside && !lastGeofenceCheck[fence.id]) {
+          try {
+            await geofenceService.recordEntry({ geofenceId: fence.id });
+            console.log(`지오펜스 진입 기록: ${fence.name}`);
+            setLastGeofenceCheck(prev => ({ ...prev, [fence.id]: true }));
+          } catch (error) {
+            console.error('지오펜스 진입 기록 실패:', error);
+          }
+        }
+        // 이탈 감지: 밖으로 나간 경우 상태 초기화
+        else if (!isInside && lastGeofenceCheck[fence.id]) {
+          setLastGeofenceCheck(prev => {
+            const updated = { ...prev };
+            delete updated[fence.id];
+            return updated;
+          });
         }
       }
-    }; // handleAppStateChange 닫는 괄호
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-    return () => subscription?.remove();
-  }, [locationState.isTracking, locationState.error, userRole]);
+    };
 
+    checkGeofenceEntry();
+  }, [currentLocation, geofences, userRole, lastGeofenceCheck]);
 
-  useEffect(() => {
-    return () => {
-      if (locationSubscription.current) {
-        locationSubscription.current.remove();
-        locationSubscription.current = null;
-        console.log("Location subscription removed on unmount.");
-      }
-    }; // useEffect cleanup 닫는 괄호
-  }, []); // useEffect 의존성 배열 닫는 괄호
-
-  useEffect(() => {
-    const sendLocationToServer = async (location: RealTimeLocation) => {
-      if (userRole !== 'user') return;
-      try {
-        const httpResponse = await axios.post(`${Global.URL}/user/getUserLocation`, {
-          number: Global.NUMBER,
-          latitude: location.latitude,
-          longitude: location.longitude,
-        }, { headers: { 'Content-Type': 'application/json' }, timeout: 10000 });
-        console.log('위치 전송 성공:', httpResponse.status);
-      } catch (error) {
-        if (isAxiosError(error)) {
-           console.error('서버 위치 전송 Axios 오류:', error.message, error.response?.status);
-        } else {
-           console.error('서버 위치 전송 일반 오류:', error);
-        }
-      }
-    }; // sendLocationToServer 닫는 괄호
-    const intervalId = setInterval(() => {
-      if (locationState.currentLocation && locationState.isTracking) {
-        sendLocationToServer(locationState.currentLocation);
-      }
-    }, 15000);
-
-    return () => clearInterval(intervalId);
-  }, [locationState.currentLocation, locationState.isTracking, userRole]);
-
-  const moveToMyLocation = async () => {
-    let location = locationState.currentLocation;
-
-    if (!location) {
-      setLocationState(prev => ({ ...prev, isLoading: true }));
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('권한 필요', '위치 권한이 필요합니다.');
-          setLocationState(prev => ({ ...prev, isLoading: false, error: '위치 권한 거부됨' }));
-          return;
-        }
-        const currentPosition = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-        location = {
-          latitude: currentPosition.coords.latitude,
-          longitude: currentPosition.coords.longitude,
-          accuracy: currentPosition.coords.accuracy || 0,
-          timestamp: currentPosition.timestamp,
-        };
-        setTracksViewChanges(true);
-        setLocationState(prev => ({ ...prev, currentLocation: location, isLoading: false, error: null }));
-      } catch (error) {
-        console.error('현재 위치 가져오기 오류:', error);
-        setLocationState(prev => ({ ...prev, isLoading: false, error: '현재 위치를 가져올 수 없습니다.' }));
-        Alert.alert('오류', '현재 위치를 가져올 수 없습니다.');
-        return;
-      }
-    } // if (!location) 닫는 괄호
-
+  const moveToMyLocation = () => {
+    // Context에서 현재 위치 가져오기
+    const location = currentLocation || targetLocation; // 이용자 또는 보호자 위치
     if (location) {
       moveToLocation(location);
+    } else {
+      Alert.alert('위치 정보 없음', '현재 위치 정보를 가져올 수 없습니다.');
     }
-  }; // moveToMyLocation 닫는 괄호
+  };
 
-  const handleGeofenceSave = (data: Omit<GeofenceData, 'id' | 'radius'>) => {
-    const newGeofence: GeofenceData = {
-      ...data,
-      id: Date.now().toString(),
-      radius: 100,
-    };
-    setGeofences(prev => [...prev, newGeofence]);
-    console.log('새로운 안전 영역 추가:', newGeofence);
-    Alert.alert('성공', `${newGeofence.name} 영역이 추가되었습니다.`);
+  const handleGeofenceSave = async (data: {
+    name: string;
+    address: string;
+    type: 'permanent' | 'temporary';
+    startTime?: Date;
+    endTime?: Date
+  }) => {
+    try {
+      // type 변환: 'permanent' -> 0, 'temporary' -> 1
+      const apiType = data.type === 'permanent' ? 0 : 1;
+
+      // 시간 변환: Date -> HH:mm 형식 문자열
+      const startTime = data.startTime
+        ? `${String(data.startTime.getHours()).padStart(2, '0')}:${String(data.startTime.getMinutes()).padStart(2, '0')}`
+        : null;
+      const endTime = data.endTime
+        ? `${String(data.endTime.getHours()).padStart(2, '0')}:${String(data.endTime.getMinutes()).padStart(2, '0')}`
+        : null;
+
+      // API 호출: POST /geofence/newFence
+      await geofenceService.create({
+        name: data.name,
+        address: data.address,
+        type: apiType,
+        startTime,
+        endTime,
+      });
+
+      // 지오펜스 목록 새로고침
+      const updatedGeofences = await geofenceService.getList();
+      setGeofences(updatedGeofences);
+
+      Alert.alert('성공', `${data.name} 영역이 추가되었습니다.`);
+      console.log('새로운 안전 영역 추가 성공');
+    } catch (error) {
+      console.error('지오펜스 추가 실패:', error);
+      Alert.alert('오류', '안전 영역 추가에 실패했습니다.');
+    }
+  };
+
+  const handleGeofenceDelete = (geofenceId: number, geofenceName: string) => {
+    Alert.alert(
+      '지오펜스 삭제',
+      `"${geofenceName}" 영역을 삭제하시겠습니까?`,
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await geofenceService.delete({ id: geofenceId });
+              const updatedGeofences = await geofenceService.getList();
+              setGeofences(updatedGeofences);
+              Alert.alert('성공', '지오펜스가 삭제되었습니다.');
+              console.log('지오펜스 삭제 성공:', geofenceId);
+            } catch (error) {
+              console.error('지오펜스 삭제 실패:', error);
+              Alert.alert('오류', '지오펜스 삭제에 실패했습니다.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const getCurrentDisplayLocation = (): UserLocation | null => {
-    if (locationState.currentLocation) {
+    // 보호자: 이용자의 위치 표시
+    if (userRole === 'supporter' && targetLocation) {
       return {
-        lat: locationState.currentLocation.latitude,
-        lng: locationState.currentLocation.longitude,
-        name: userRole === 'user' ? '내 위치' : '이용자',
-        status: locationState.isTracking ? 'tracking' : 'idle',
+        lat: targetLocation.latitude,
+        lng: targetLocation.longitude,
+        name: '이용자',
+        status: isWebSocketConnected ? 'tracking' : 'idle',
       };
-    } // if 닫는 괄호
+    }
+
+    // 이용자: 자신의 위치 표시
+    if (userRole === 'user' && currentLocation) {
+      return {
+        lat: currentLocation.latitude,
+        lng: currentLocation.longitude,
+        name: '내 위치',
+        status: isTracking ? 'tracking' : 'idle',
+      };
+    }
+
     return null;
   }; // getCurrentDisplayLocation 닫는 괄호
 
 
   const userLocation = getCurrentDisplayLocation();
 
-  if (locationState.isLoading) {
+  if (isLoading) {
     return (
       <SafeAreaView className="flex-1 justify-center items-center bg-green-50">
         <Text style={{ fontFamily: 'System' }} className="text-gray-700 text-lg">위치 정보를 불러오는 중...</Text>
@@ -304,15 +281,15 @@ const MainPage: React.FC = () => {
     );
   } // if 닫는 괄호
 
-  if (locationState.error) {
+  if (locationError) {
      return (
       <SafeAreaView className="flex-1 justify-center items-center bg-green-50 p-5">
         <Text style={{ fontFamily: 'System' }} className="text-red-600 text-lg text-center mb-4">오류 발생</Text>
-        <Text style={{ fontFamily: 'System' }} className="text-gray-700 text-base text-center">{locationState.error}</Text>
-        {locationState.error.includes("권한") && (
+        <Text style={{ fontFamily: 'System' }} className="text-gray-700 text-base text-center">{locationError}</Text>
+        {locationError.includes("권한") && (
           <TouchableOpacity
             className="mt-6 bg-green-600 px-6 py-3 rounded-lg"
-            // onPress={() => Linking.openSettings()} // 설정 이동 기능 추가 시
+            onPress={() => Linking.openSettings()}
           >
             <Text style={{ fontFamily: 'System' }} className="text-white font-medium">설정으로 이동</Text>
           </TouchableOpacity>
@@ -386,12 +363,12 @@ const MainPage: React.FC = () => {
             longitude: userLocation.lng,
           }}
           title={userLocation.name}
-          description={locationState.isTracking ? "실시간 추적 중" : "현재 위치"}
+          description={isTracking ? "실시간 추적 중" : "현재 위치"}
           anchor={{ x: 0.5, y: 1 }}
           tracksViewChanges={tracksViewChanges}
         >
           <Image
-            source={mapPinImage}
+            source={require('../assets/images/mappin.png')}
             style={{
               width: 35,
               height: 35,
@@ -401,14 +378,39 @@ const MainPage: React.FC = () => {
           />
         </Marker>
       )}
-      {/* TODO: geofences 렌더링 */}
+
+      {/* 지오펜스 Circle과 Marker 렌더링 */}
+      {geofences.map((fence) => (
+        <React.Fragment key={fence.id}>
+          <Circle
+            center={{ latitude: fence.latitude, longitude: fence.longitude }}
+            radius={200} // 기본 반경 200미터
+            strokeColor="rgba(37, 235, 103, 0.5)"
+            strokeWidth={2}
+            fillColor="rgba(37, 235, 103, 0.15)"
+          />
+          <Marker
+            coordinate={{ latitude: fence.latitude, longitude: fence.longitude }}
+            title={fence.name}
+            description={`${fence.address} (${fence.type === 0 ? '영구' : '일시적'})`}
+            pinColor={fence.type === 0 ? '#25eb67' : '#04faac'}
+            onCalloutPress={() => handleGeofenceDelete(fence.id, fence.name)}
+          />
+        </React.Fragment>
+      ))}
     </MapView>
   ); // renderMapView 닫는 괄호
 
   const headerText = userRole === 'user' ? '내 위치' : '이용자 위치';
   const headerSubText = userRole === 'user'
-    ? (locationState.isTracking ? '원활한 서비스를 위해 GPS 데이터를 수집 중입니다.' : 'GPS 미작동 중')
-    : (locationState.isTracking ? '선택한 이용자의 위치를 실시간 표시합니다.' : 'GPS 미작동 중');
+    ? (isTracking
+        ? `GPS 데이터 수집 중${isWebSocketConnected ? ' • 서버 연결됨' : ' • 서버 연결 안됨'}`
+        : 'GPS 미작동 중')
+    : (isWebSocketConnected && targetLocation
+        ? '선택한 이용자의 위치를 실시간 표시합니다.'
+        : isWebSocketConnected
+          ? '이용자 위치 대기 중...'
+          : '서버 연결 안됨');
 
   return (
     <SafeAreaView className="flex-1 bg-green-50">
@@ -429,9 +431,9 @@ const MainPage: React.FC = () => {
            visible={isGeofenceModalVisible}
            onClose={() => setIsGeofenceModalVisible(false)}
            onSave={handleGeofenceSave}
-           initialLocation={locationState.currentLocation ? {
-             latitude: locationState.currentLocation.latitude,
-             longitude: locationState.currentLocation.longitude
+           initialLocation={currentLocation ? {
+             latitude: currentLocation.latitude,
+             longitude: currentLocation.longitude
            } : undefined}
          />
       </View>

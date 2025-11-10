@@ -153,14 +153,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   elderlySection: {
-    marginLeft: 32,
     marginTop: 16,
-    paddingLeft: 16,
-    borderLeftWidth: 2,
-    borderLeftColor: '#DBEAFE',
     backgroundColor: '#EFF6FF',
-    borderTopRightRadius: 8,
-    borderBottomRightRadius: 8,
+    borderRadius: 8,
     padding: 16,
   },
   careCenterCard: {

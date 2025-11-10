@@ -1,8 +1,9 @@
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { Calendar, CheckSquare, Clock, MapPin, Plus } from 'lucide-react-native';
+import { Calendar, CheckSquare, Clock, MapPin, Plus, Trash2 } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -12,6 +13,8 @@ import {
 } from 'react-native';
 import BottomNavigation from '../components/BottomNavigation';
 import TodoModal from '../components/TodoModal';
+import { calendarService } from '../services/calendarService';
+import type { CalendarDayData } from '../types/api';
 
 // --- 타입 정의 ---
 type RootStackParamList = {
@@ -23,7 +26,7 @@ type RootStackParamList = {
 type NavigationProp = StackNavigationProp<RootStackParamList, 'CalendarPage'>;
 
 interface Schedule {
-  id: string;
+  id: number; // geofenceId
   name: string;
   address: string;
   startTime: string;
@@ -33,7 +36,7 @@ interface Schedule {
 }
 
 interface Todo {
-  id: string;
+  id: number; // userEventId
   title: string;
   time: Date;
   description?: string;
@@ -49,36 +52,6 @@ const today = new Date();
 const todayDateStr = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
 
 console.log('오늘 날짜:', todayDateStr, '요일:', ['일','월','화','수','목','금','토'][today.getDay()]);
-
-const MOCK_SCHEDULES: Schedule[] = [
-  {
-    id: '1',
-    name: 'OO병원 정기 검진',
-    address: '서울특별시 강남구 테헤란로 123',
-    startTime: '14:00',
-    endTime: '16:00',
-    date: '2025-10-27',
-    type: 'temporary',
-  },
-  {
-    id: '2',
-    name: '우리집',
-    address: '서울특별시 서초구 서초대로 456',
-    startTime: '00:00',
-    endTime: '23:59',
-    date: todayDateStr,
-    type: 'permanent',
-  },
-  {
-    id: '3',
-    name: '경로당',
-    address: '서울특별시 송파구 올림픽로 789',
-    startTime: '09:00',
-    endTime: '18:00',
-    date: '2025-10-20',
-    type: 'temporary',
-  },
-];
 
 // --- 캘린더 날짜 유틸리티 ---
 const getDaysInMonth = (date: Date) => {
@@ -148,7 +121,7 @@ const ScheduleCard: React.FC<{ schedule: Schedule }> = React.memo(({ schedule })
 ));
 
 // --- 분리된 할 일 카드 컴포넌트 ---
-const TodoCard: React.FC<{ todo: Todo }> = React.memo(({ todo }) => (
+const TodoCard: React.FC<{ todo: Todo; onDelete: (id: number) => void }> = React.memo(({ todo, onDelete }) => (
   <View className="bg-white rounded-xl shadow p-4 mb-3 border border-gray-100">
     <View className="flex-row items-start">
       <View className="h-11 w-11 bg-purple-50 rounded-lg items-center justify-center mr-3">
@@ -171,6 +144,12 @@ const TodoCard: React.FC<{ todo: Todo }> = React.memo(({ todo }) => (
           </Text>
         </View>
       </View>
+      <TouchableOpacity
+        className="p-2"
+        onPress={() => onDelete(todo.id)}
+      >
+        <Trash2 size={18} color="#ef4444" />
+      </TouchableOpacity>
     </View>
   </View>
 ));
@@ -183,9 +162,68 @@ const CalendarPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>(todayDateStr);
   const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [isTodoModalVisible, setIsTodoModalVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
+  // 캘린더 데이터 로드
   useEffect(() => {
-    setSchedules(MOCK_SCHEDULES);
+    const loadCalendarData = async () => {
+      setIsLoading(true);
+      try {
+        const calendarData = await calendarService.getUserData();
+
+        // 데이터 변환: API 응답 -> UI 형식
+        const allSchedules: Schedule[] = [];
+        const allTodos: Todo[] = [];
+
+        calendarData.forEach((dayData) => {
+          // geofences를 schedules로 변환
+          dayData.geofences.forEach((fence) => {
+            // ISO 문자열에서 HH:mm 추출
+            const start = new Date(fence.startTime);
+            const end = new Date(fence.endTime);
+
+            allSchedules.push({
+              id: fence.geofenceId,
+              name: fence.name,
+              address: fence.address,
+              startTime: `${start.getHours().toString().padStart(2, '0')}:${start.getMinutes().toString().padStart(2, '0')}`,
+              endTime: `${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`,
+              date: dayData.date,
+              type: 'temporary', // API에서 타입 정보가 없으므로 일시적으로 설정
+            });
+          });
+
+          // userEvents를 todos로 변환
+          dayData.userEvents.forEach((event) => {
+            // "HH:mm:ss" -> Date 객체로 변환
+            const [hours, minutes] = event.eventStartTime.split(':').map(Number);
+            const time = new Date();
+            time.setHours(hours);
+            time.setMinutes(minutes);
+            time.setSeconds(0);
+
+            allTodos.push({
+              id: event.userEventId,
+              title: event.event,
+              time,
+              date: dayData.date,
+              type: 'todo',
+            });
+          });
+        });
+
+        setSchedules(allSchedules);
+        setTodos(allTodos);
+        console.log('캘린더 데이터 로드 성공:', allSchedules.length, 'schedules,', allTodos.length, 'todos');
+      } catch (error) {
+        console.error('캘린더 데이터 로드 실패:', error);
+        Alert.alert('오류', '캘린더 데이터를 불러오는 데 실패했습니다.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadCalendarData();
   }, []);
 
   const itemsByDate = useMemo(() => {
@@ -220,21 +258,70 @@ const CalendarPage: React.FC = () => {
 
   const daysInMonth = getDaysInMonth(currentMonth);
 
-  const handleTodoSave = (data: { title: string; time: Date; description?: string }) => {
-    const newTodo: Todo = {
-      ...data,
-      id: Date.now().toString(),
-      date: selectedDate,
-      type: 'todo',
-    };
-    setTodos(prev => [...prev, newTodo]);
+  const handleTodoSave = async (data: { title: string; time: Date; description?: string }) => {
+    try {
+      // API 호출: POST /calendar/addEvent
+      await calendarService.addEvent({
+        event: data.title,
+        eventDate: selectedDate,
+        startTime: `${data.time.getHours().toString().padStart(2, '0')}:${data.time.getMinutes().toString().padStart(2, '0')}`,
+      });
+
+      // 캘린더 데이터 새로고침
+      const calendarData = await calendarService.getUserData();
+      const allTodos: Todo[] = [];
+
+      calendarData.forEach((dayData) => {
+        dayData.userEvents.forEach((event) => {
+          const [hours, minutes] = event.eventStartTime.split(':').map(Number);
+          const time = new Date();
+          time.setHours(hours);
+          time.setMinutes(minutes);
+          time.setSeconds(0);
+
+          allTodos.push({
+            id: event.userEventId,
+            title: event.event,
+            time,
+            date: dayData.date,
+            type: 'todo',
+          });
+        });
+      });
+
+      setTodos(allTodos);
+      Alert.alert('성공', '할 일이 추가되었습니다.');
+    } catch (error) {
+      console.error('할 일 추가 실패:', error);
+      Alert.alert('오류', '할 일 추가에 실패했습니다.');
+    }
+  };
+
+  const handleTodoDelete = async (eventId: number) => {
+    Alert.alert('할 일 삭제', '이 할 일을 삭제하시겠습니까?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await calendarService.deleteEvent(eventId);
+            setTodos(prev => prev.filter(todo => todo.id !== eventId));
+            Alert.alert('성공', '할 일이 삭제되었습니다.');
+          } catch (error) {
+            console.error('할 일 삭제 실패:', error);
+            Alert.alert('오류', '할 일 삭제에 실패했습니다.');
+          }
+        },
+      },
+    ]);
   };
 
   const renderItem = ({ item }: { item: CalendarItem }) => {
     if (item.itemType === 'schedule') {
       return <ScheduleCard key={item.id} schedule={item} />;
     } else {
-      return <TodoCard key={item.id} todo={item} />;
+      return <TodoCard key={item.id} todo={item} onDelete={handleTodoDelete} />;
     }
   };
 

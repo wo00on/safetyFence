@@ -1,6 +1,6 @@
 import Global from '@/constants/Global';
+import { linkService } from '../services/linkService';
 import { NavigationProp, useNavigation, useRoute } from '@react-navigation/native';
-import axios from 'axios';
 import {
   MapPin,
   MoreVertical,
@@ -23,11 +23,9 @@ import {
 import BottomNavigation from '../components/BottomNavigation';
 
 interface User {
-  name: string;
-  number: string;
-  homeAddress: string;
+  id: number;
+  userNumber: string;
   relation: string;
-  status: 'active' | 'inactive';
 }
 
 type RootStackParamList = {
@@ -49,42 +47,40 @@ const UsersScreen: React.FC = () => {
   const [error, setError] = useState('');
   const [showDropdown, setShowDropdown] = useState<string | null>(null);
 
-  const mapToUser = (data: any): User => ({
-    name: data.name,
-    number: data.userNumber,
-    homeAddress: data.homeAddress,
-    relation: data.relation,
-    status: data.status,
-  });
-
   const handleAddUser = async () => {
     setIsLoading(true);
     setError('');
 
     try {
-      if (newUserCode.length === 6 && /^[0-9a-zA-Z]+$/.test(newUserCode)) {
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-
-        await axios.post(`${Global.URL}/link/saveNewLink`, {
-          supporterNumber: Global.NUMBER,
-          userLinkCode: newUserCode,
-          relation: newUserRelationship,
-        });
-
-        const res = await axios.post(`${Global.URL}/link/getLinkList`, {
-          supporterNumber: Global.NUMBER,
-        });
-        setUsers(res.data.map(mapToUser));
-
-        setIsAddUserDialogOpen(false);
-        setNewUserCode('');
-        setNewUserRelationship('');
-      } else {
-        setError('올바른 6자리 숫자 코드를 입력해주세요.');
+      // 코드 검증
+      if (!newUserCode || newUserCode.length < 6) {
+        setError('6자리 이상의 코드를 입력해주세요.');
+        return;
       }
+      if (!newUserRelationship.trim()) {
+        setError('관계를 입력해주세요.');
+        return;
+      }
+
+      // API 호출: POST /link/addUser
+      await linkService.addUser({
+        linkCode: newUserCode,
+        relation: newUserRelationship,
+      });
+
+      // 목록 새로고침: GET /link/list
+      const updatedUsers = await linkService.getList();
+      setUsers(updatedUsers);
+
+      // 모달 닫기 및 초기화
+      setIsAddUserDialogOpen(false);
+      setNewUserCode('');
+      setNewUserRelationship('');
+
+      Alert.alert('성공', '이용자가 추가되었습니다.');
     } catch (err: any) {
       const message = err.response?.data?.message;
-      setError(message || '이용자 추가 중 알 수 없는 오류가 발생했습니다.');
+      setError(message || '이용자 추가 중 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -93,12 +89,12 @@ const UsersScreen: React.FC = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await axios.post(`${Global.URL}/link/getLinkList`, {
-          supporterNumber: Global.NUMBER,
-        });
-        setUsers(response.data.map(mapToUser));
+        // API 호출: GET /link/list
+        const data = await linkService.getList();
+        setUsers(data);
       } catch (err) {
-        console.error('이용자 목록 불러오기 실패', err);
+        console.error('이용자 목록 불러오기 실패:', err);
+        Alert.alert('오류', '이용자 목록을 불러오는 데 실패했습니다.');
       }
     };
     fetchUsers();
@@ -117,20 +113,14 @@ const UsersScreen: React.FC = () => {
         style: 'destructive',
         onPress: async () => {
           try {
-            await axios.post(
-              `${Global.URL}/link/deleteLink`,
-              {
-                supporterNumber: Global.NUMBER,
-                userNumber,
-              },
-              {
-                headers: { 'Content-Type': 'application/json' },
-              }
-            );
-            const res = await axios.post(`${Global.URL}/link/getLinkList`, {
-              supporterNumber: Global.NUMBER,
-            });
-            setUsers(res.data.map(mapToUser));
+            // API 호출: DELETE /link/deleteUser
+            await linkService.deleteUser({ number: userNumber });
+
+            // 목록 새로고침: GET /link/list
+            const updatedUsers = await linkService.getList();
+            setUsers(updatedUsers);
+
+            Alert.alert('성공', '이용자가 삭제되었습니다.');
           } catch (error: any) {
             Alert.alert('오류', error.response?.data?.message || '이용자 삭제 중 문제가 발생했습니다.');
           } finally {
@@ -144,17 +134,16 @@ const UsersScreen: React.FC = () => {
   const getTabUsers = () => {
     if (!searchQuery) return users;
     return users.filter(user =>
-      user.name?.includes(searchQuery) ||
       user.relation?.includes(searchQuery) ||
-      user.number?.includes(searchQuery)
+      user.userNumber?.includes(searchQuery)
     );
   };
 
   const renderUserCard = (user: User) => (
     <TouchableOpacity
-      key={user.number}
+      key={user.userNumber}
       className="bg-white rounded-lg p-4 mb-4 shadow-sm border border-gray-100"
-      onPress={() => handleUserClick(user.number)}
+      onPress={() => handleUserClick(user.userNumber)}
     >
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center flex-1">
@@ -162,32 +151,21 @@ const UsersScreen: React.FC = () => {
             <User size={24} color="#25eb25ff" />
           </View>
           <View className="flex-1">
-            <View className="flex-row items-center">
-              <Text className="font-medium text-gray-900">{user.name}</Text>
-              <View className={`ml-2 px-2 py-1 rounded-full ${user.status === 'active' ? 'bg-green-50' : 'bg-gray-50'}`}>
-                <Text className={`text-xs ${user.status === 'active' ? 'text-green-700' : 'text-gray-700'}`}>{user.status === 'active' ? '활성' : '비활성'}</Text>
-              </View>
-            </View>
+            <Text className="font-medium text-gray-900 mb-1">{user.userNumber}</Text>
             <Text className="text-sm text-gray-600">{user.relation}</Text>
           </View>
         </View>
-        <TouchableOpacity className="p-2" onPress={() => setShowDropdown(showDropdown === user.number ? null : user.number)}>
+        <TouchableOpacity className="p-2" onPress={() => setShowDropdown(showDropdown === user.userNumber ? null : user.userNumber)}>
           <MoreVertical size={16} color="#6b7280" />
         </TouchableOpacity>
       </View>
-      {showDropdown === user.number && (
+      {showDropdown === user.userNumber && (
         <View className="absolute right-4 top-16 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-          <TouchableOpacity className="px-4 py-3" onPress={() => handleRemoveUser(user.number)}>
+          <TouchableOpacity className="px-4 py-3" onPress={() => handleRemoveUser(user.userNumber)}>
             <Text className="text-red-600">삭제</Text>
           </TouchableOpacity>
         </View>
       )}
-      <View className="mt-4 space-y-2">
-        <View className="flex-row items-center">
-          <MapPin size={16} color="#6b7280" />
-          <Text className="text-sm text-gray-700 ml-2">주소: <Text className="font-medium">{user.homeAddress}</Text></Text>
-        </View>
-      </View>
     </TouchableOpacity>
   );
 
