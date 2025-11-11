@@ -4,6 +4,7 @@ import { Calendar, CheckSquare, Clock, MapPin, Plus, Trash2 } from 'lucide-react
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Image,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -40,6 +41,7 @@ interface Todo {
   title: string;
   time: Date;
   description?: string;
+  image?: string;
   date: string;
   type: 'todo';
 }
@@ -137,6 +139,9 @@ const TodoCard: React.FC<{ todo: Todo; onDelete: (id: number) => void }> = React
         </View>
         {todo.description && (
           <Text className="text-sm text-gray-500 mb-3">{todo.description}</Text>
+        )}
+        {todo.image && (
+          <Image source={{ uri: todo.image }} className="w-full h-40 rounded-lg my-2" />
         )}
         <View className="self-start px-2.5 py-1 rounded-full bg-purple-100">
           <Text className="text-xs font-semibold text-purple-700">

@@ -5,9 +5,9 @@
  * - 위치 구독: /topic/location/{targetUserNumber}
  */
 
+import Global from '@/constants/Global';
 import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-import Global from '@/constants/Global';
 
 export interface LocationData {
   latitude: number;

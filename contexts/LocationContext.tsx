@@ -8,6 +8,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import * as Location from 'expo-location';
 import { AppState, AppStateStatus } from 'react-native';
+import { Accelerometer } from 'expo-sensors';
 import { websocketService } from '../services/websocketService';
 import { startBackgroundLocationTracking, stopBackgroundLocationTracking } from '../services/backgroundLocationService';
 import Global from '@/constants/Global';
@@ -64,6 +65,8 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
   const locationSubscription = useRef<Location.LocationSubscription | null>(null);
   const websocketSendInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const appState = useRef<AppStateStatus>(AppState.currentState);
+  const stopTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const accelerometerSubscription = useRef<{ remove: () => void } | null>(null);
 
   /**
    * 위치 추적 시작
@@ -142,6 +145,10 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
         } else {
           console.warn('⚠️ 백그라운드 위치 추적 시작 실패 (포그라운드 추적은 작동 중)');
         }
+
+        // 움직임 감지 시작 (배터리 최적화)
+        setupMovementDetection();
+        console.log('✅ 배터리 최적화: 움직임 감지 시작');
       }
 
       console.log('✅ 위치 추적 시작 완료');
@@ -165,6 +172,59 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
 
     // 백그라운드 위치 추적도 중지
     await stopBackgroundLocationTracking();
+
+    // 움직임 감지 타이머 정리
+    if (stopTimeout.current) {
+      clearTimeout(stopTimeout.current);
+      stopTimeout.current = null;
+    }
+
+    // Accelerometer 구독 해제
+    if (accelerometerSubscription.current) {
+      accelerometerSubscription.current.remove();
+      accelerometerSubscription.current = null;
+    }
+  };
+
+  /**
+   * 움직임 감지 설정 (배터리 최적화)
+   */
+  const setupMovementDetection = () => {
+    Accelerometer.setUpdateInterval(1000); // 1초 간격
+    const subscription = Accelerometer.addListener(accelerometerData => {
+      const { x, y, z } = accelerometerData;
+      const magnitude = Math.sqrt(x * x + y * y + z * z);
+
+      if (magnitude > 1.1) { // 움직임 감지
+        if (stopTimeout.current) {
+          clearTimeout(stopTimeout.current);
+          stopTimeout.current = null;
+          console.log('📱 움직임 감지됨, 위치 추적 중지 타이머 취소');
+        }
+        // 백그라운드 위치 추적 재시작 (이미 시작되어 있을 수 있음)
+        if (Global.USER_ROLE === 'user') {
+          startBackgroundLocationTracking().then(started => {
+            if (started) {
+              console.log('✅ 움직임 감지: 백그라운드 위치 추적 활성화');
+            }
+          });
+        }
+      } else { // 움직임 없음
+        if (!stopTimeout.current) {
+          console.log('📱 움직임 없음, 10분 후 위치 추적 중지 예약');
+          stopTimeout.current = setTimeout(() => {
+            if (Global.USER_ROLE === 'user') {
+              stopBackgroundLocationTracking().then(() => {
+                console.log('⏸️ 배터리 절약: 백그라운드 위치 추적 중지');
+              });
+            }
+            stopTimeout.current = null;
+          }, 600000); // 10분
+        }
+      }
+    });
+
+    accelerometerSubscription.current = subscription;
   };
 
   /**
@@ -282,6 +342,15 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
       stopTracking();
       if (websocketSendInterval.current) {
         clearInterval(websocketSendInterval.current);
+      }
+      // Accelerometer 정리
+      if (stopTimeout.current) {
+        clearTimeout(stopTimeout.current);
+        stopTimeout.current = null;
+      }
+      if (accelerometerSubscription.current) {
+        accelerometerSubscription.current.remove();
+        accelerometerSubscription.current = null;
       }
       // WebSocket은 앱 종료 시에만 해제 (페이지 전환 시 유지)
     };

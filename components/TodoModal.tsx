@@ -1,19 +1,23 @@
-import { ChevronDown, ChevronUp, Clock } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, Clock, Paperclip, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   Alert,
+  Image,
   Modal,
   SafeAreaView,
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 interface TodoData {
   title: string;
   time: Date;
   description?: string;
+  image?: string;
 }
 
 interface TodoModalProps {
@@ -33,11 +37,39 @@ const TodoModal: React.FC<TodoModalProps> = ({
     title: '',
     time: new Date(),
     description: '',
+    image: undefined,
   });
 
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [hours, setHours] = useState('09');
   const [minutes, setMinutes] = useState('00');
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('권한 필요', '사진을 선택하려면 갤러리 접근 권한이 필요합니다.');
+      return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setFormData(prev => ({ ...prev, image: result.assets[0].uri }));
+    }
+  };
+
+  const handleClose = () => {
+    setFormData({ title: '', time: new Date(), description: '', image: undefined });
+    setHours('09');
+    setMinutes('00');
+    setShowTimePicker(false);
+    onClose();
+  };
 
   const handleSave = () => {
     if (!formData.title.trim()) {
@@ -54,17 +86,7 @@ const TodoModal: React.FC<TodoModalProps> = ({
       ...formData,
       time: timeToSave,
     });
-    onClose();
-    
-    // 폼 초기화
-    setFormData({
-      title: '',
-      time: new Date(),
-      description: '',
-    });
-    setHours('09');
-    setMinutes('00');
-    setShowTimePicker(false);
+    handleClose();
   };
 
   const adjustHours = (increment: number) => {
@@ -117,19 +139,19 @@ const TodoModal: React.FC<TodoModalProps> = ({
       visible={visible}
       animationType="slide"
       transparent={true}
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <SafeAreaView className="flex-1 bg-black/50 justify-center items-center">
-        <View className="bg-white rounded-2xl w-11/12 max-w-md">
+        <View className="bg-white rounded-2xl w-11/12 max-w-md max-h-[90vh]">
           {/* 헤더 */}
           <View className="flex-row items-center justify-between p-6 border-b border-gray-200">
             <Text className="text-xl font-bold text-gray-900">할 일 추가</Text>
-            <TouchableOpacity onPress={onClose} className="p-2">
-              <Text className="text-2xl text-gray-400">×</Text>
+            <TouchableOpacity onPress={handleClose} className="p-2">
+              <X size={24} color="#6b7280" />
             </TouchableOpacity>
           </View>
 
-          <View className="p-6">
+          <ScrollView className="p-6">
             {/* 선택된 날짜 표시 */}
             <View className="mb-4 p-3 bg-green-50 rounded-lg">
               <Text className="text-sm text-green-600 font-medium">
@@ -224,7 +246,33 @@ const TodoModal: React.FC<TodoModalProps> = ({
               />
             </View>
 
-            {/* 추가하기 버튼 */}
+            {/* 사진 첨부 (선택사항) */}
+            <View className="mb-6">
+              <Text className="text-sm font-medium text-gray-700 mb-2">사진 첨부 (선택사항)</Text>
+              {formData.image ? (
+                <View className="relative">
+                  <Image source={{ uri: formData.image }} className="w-full h-48 rounded-lg" />
+                  <TouchableOpacity
+                    onPress={() => setFormData(prev => ({ ...prev, image: undefined }))}
+                    className="absolute top-2 right-2 bg-black/50 rounded-full p-1.5"
+                  >
+                    <X size={18} color="white" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  className="flex-row items-center justify-center border-2 border-dashed border-gray-300 rounded-lg py-10"
+                  onPress={pickImage}
+                >
+                  <Paperclip size={20} color="#6b7280" />
+                  <Text className="ml-2 text-base text-gray-600">사진 추가하기</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </ScrollView>
+
+          {/* 추가하기 버튼 */}
+          <View className="px-6 pb-6 border-t border-gray-200 pt-4">
             <TouchableOpacity
               className="bg-green-500 py-4 rounded-lg"
               onPress={handleSave}
