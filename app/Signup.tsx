@@ -1,4 +1,5 @@
 import Global from '@/constants/Global';
+import { authService } from '../services/authService';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { Calendar, Check, MapPin, Search, X } from 'lucide-react-native';
@@ -19,18 +20,7 @@ import {
 import styles from '../styles/signupStyles';
 import DaumPostcode, { DaumPostcodeData } from '../utils/DaumPostcode';
 
-// 요양원/보호센터 모의 데이터
-const CARE_CENTERS = Global.CARE_CENTERS;
-
 // 인터페이스 정의
-interface CareCenter {
-  id: number;
-  name: string;
-  centerStreetAddress: string;
-  type: string;
-  centerAddress: string;
-}
-
 interface FormData {
   name: string;
   password: string;
@@ -40,7 +30,8 @@ interface FormData {
   homeAddress: string;
   homeStreetAddress: string;
   homeStreetAddressDetail: string;
-  careCenter: CareCenter | null;
+  centerAddress: string;
+  centerStreetAddress: string;
   isElderly: boolean;
 }
 
@@ -61,32 +52,14 @@ const SignupPage: React.FC = () => {
     homeAddress: '',
     homeStreetAddress: '',
     homeStreetAddressDetail: '',
-    careCenter: null,
+    centerAddress: '',
+    centerStreetAddress: '',
     isElderly: false
   });
 
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false); // 생년월일 검색 관련
-  const [isPostcodeMode, setIsPostcodeMode] = useState<boolean>(false); // 다음 우편번호 검색 모달 상태
-  const [isCareCenterModalOpen, setIsCareCenterModalOpen] = useState<boolean>(false); // 케어센터 데이터 관련
-  const [searchTerm, setSearchTerm] = useState<string>(""); // 센터 검색 관련 
-  const [filteredCenters, setFilteredCenters] = useState<CareCenter[]>(CARE_CENTERS); // 센터 검색 관련 
-
-  // 검색어에 따라 요양원/보호센터 필터링
-  useEffect(() => {
-    if (searchTerm.trim() === "") {
-      setFilteredCenters(CARE_CENTERS);
-    } else {
-      const filtered = CARE_CENTERS.filter(
-        (center) =>
-
-          center.name.includes(searchTerm) || 
-          center.centerStreetAddress.includes(searchTerm) || 
-          center.type.includes(searchTerm) ||
-          center.centerAddress.includes(searchTerm)
-      );
-      setFilteredCenters(filtered);
-    }
-  }, [searchTerm]);
+  const [isPostcodeMode, setIsPostcodeMode] = useState<boolean>(false); // 집 주소 검색 모달 상태
+  const [isCenterPostcodeMode, setIsCenterPostcodeMode] = useState<boolean>(false); // 센터 주소 검색 모달 상태
 
   const handleInputChange = <K extends keyof FormData>(
     field: K,
@@ -137,13 +110,43 @@ const SignupPage: React.FC = () => {
     setIsPostcodeMode(false);
   };
 
-  const selectCareCenter = (center: CareCenter): void => {
-    handleInputChange("careCenter", center);
-    setIsCareCenterModalOpen(false);
+  // 센터 주소 검색 시작
+  const searchCenterZipCode = (): void => {
+    setIsCenterPostcodeMode(true);
   };
 
-  const removeCareCenter = (): void => {
-    handleInputChange("careCenter", null);
+  // 센터 주소 선택 처리
+  const handleCenterDaumPostcode = (data: DaumPostcodeData): void => {
+    // 주소 조합 로직
+    let fullAddress = data.address;
+    let extraAddress = '';
+
+    // 도로명 주소인 경우 추가 정보 처리
+    if (data.addressType === 'R') {
+      if (data.bname !== '') {
+        extraAddress += data.bname;
+      }
+      if (data.buildingName !== '') {
+        extraAddress +=
+          extraAddress !== '' ? `, ${data.buildingName}` : data.buildingName;
+      }
+      fullAddress += extraAddress !== '' ? ` (${extraAddress})` : '';
+    }
+
+    // 센터 주소 업데이터
+    setFormData(prev => ({
+      ...prev,
+      centerStreetAddress: fullAddress,
+      centerAddress: String(data.zonecode),
+    }));
+
+    // 모달 닫기
+    setIsCenterPostcodeMode(false);
+  };
+
+  // 센터 주소 검색 모달 닫기
+  const closeCenterDaumPostcode = (): void => {
+    setIsCenterPostcodeMode(false);
   };
 
   const onDateChange = (event: any, selectedDate?: Date): void => {
@@ -165,71 +168,68 @@ const SignupPage: React.FC = () => {
       birth: formData.birth ? formData.birth.toISOString().slice(0, 10) : null,
       number: formData.number,
       homeAddress: formData.homeAddress,
-      centerAddress: formData.careCenter?.centerAddress,
+      centerAddress: formData.centerAddress,
       homeStreetAddress: formData.homeStreetAddress,
       homeStreetAddressDetail: formData.homeStreetAddressDetail,
-      centerStreetAddress: formData.careCenter?.centerStreetAddress
+      centerStreetAddress: formData.centerStreetAddress
     };
     return signupData;
   };
 
   const handleSubmit = async (): Promise<void> => {
-  const signupData = prepareSignupData();
-    
-    // 임시로 서버 연결 없이 테스트
-    console.log('유저 가입 전송 데이터: ', signupData)
-    Global.NUMBER = signupData.number;
+    const signupData = prepareSignupData();
 
-    Alert.alert(
-      "🎉 회원가입 완료",
-      "회원가입이 성공적으로 완료되었습니다!",
-      [
-        {
-          text: "확인",
-          onPress: () => {
-            console.log('SelectRole로 이동 시도');
-            try {
-              router.replace('/SelectRole');
-            } catch (navError) {
-              console.error('네비게이션 오류:', navError);
-              router.push('/SelectRole');
-            }
-          }
-        }
-      ]
-    );
+    // 유효성 검증
+    if (!signupData.name || !signupData.password || !signupData.number || !signupData.birth) {
+      Alert.alert('입력 오류', '필수 항목을 모두 입력해주세요.');
+      return;
+    }
 
-    // 실제 서버 연결 코드 (주석 처리)
-    /*
+    console.log('회원가입 전송 데이터:', signupData);
+
     try {
-      const response = await axios.post(`${Global.URL}/login/newUser`, signupData);
-      console.log('서버 응답:', response.data);
-      Global.NUMBER = signupData.number;
+      // API 호출: POST /user/signup
+      const response = await authService.signup({
+        number: signupData.number,
+        name: signupData.name,
+        password: signupData.password,
+        birth: signupData.birth,
+        homeAddress: signupData.homeAddress,
+        centerAddress: signupData.centerAddress,
+        homeStreetAddress: signupData.homeStreetAddress,
+        homeStreetAddressDetail: signupData.homeStreetAddressDetail,
+        centerStreetAddress: signupData.centerStreetAddress,
+      });
 
+      console.log('회원가입 성공:', response);
+
+      // Global 상태 업데이트
+      Global.NUMBER = response.number;
+
+      // 성공 알림 및 로그인 페이지로 이동
       Alert.alert(
         "🎉 회원가입 완료",
-        "회원가입이 성공적으로 완료되었습니다!",
+        `${response.name}님, 회원가입이 성공적으로 완료되었습니다!\n로그인 페이지로 이동하여 로그인해주세요.`,
         [
           {
             text: "확인",
             onPress: () => {
-              console.log('SelectRole로 이동 시도');
+              console.log('로그인 페이지로 이동');
               try {
-                router.replace('/SelectRole');
+                router.replace('/');
               } catch (navError) {
                 console.error('네비게이션 오류:', navError);
-                router.push('/SelectRole');
+                router.push('/');
               }
             }
           }
         ]
       );
     } catch (error: any) {
-    const message = error?.response?.data?.message || "회원가입에 실패했습니다. 다시 시도해주세요.";
-    Alert.alert("회원 가입 실패", message);
-    console.error('로그인 실패 : ', error);
-  }
-  */
+      const message = error?.response?.data?.message || "회원가입에 실패했습니다. 다시 시도해주세요.";
+      Alert.alert("회원가입 실패", message);
+      console.error('회원가입 실패:', error);
+    }
   };
 
   // 체크박스 컴포넌트
@@ -436,59 +436,52 @@ const SignupPage: React.FC = () => {
                   const newValue = !formData.isElderly;
                   handleInputChange("isElderly", newValue);
                   if (!newValue) {
-                    handleInputChange("careCenter", null);
+                    setFormData(prev => ({
+                      ...prev,
+                      centerAddress: '',
+                      centerStreetAddress: ''
+                    }));
                   }
                 }}
                 label="노인 이용자입니다"
               />
 
-              {/* 요양원/보호센터 정보 */}
+              {/* 센터 주소 */}
               {formData.isElderly && (
                 <View style={styles.elderlySection}>
                   <Text style={styles.label}>
-                    요양원/보호센터 <Text style={styles.required}>*</Text>
+                    센터 주소 <Text style={styles.required}>*</Text>
                   </Text>
 
-                  {formData.careCenter ? (
-                    <View style={styles.careCenterCard}>
-                      <View style={styles.careCenterHeader}>
-                        <Text style={styles.careCenterName}>
-                          {formData.careCenter.name}
-                        </Text>
-                        <View style={styles.careCenterTypeTag}>
-                          <Text style={styles.careCenterTypeText}>
-                            {formData.careCenter.type}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={styles.careCenterAddressRow}>
-                        <MapPin size={12} color="#6B7280" style={styles.mapIcon} />
-                        <Text style={styles.careCenterAddress}>
-                          {formData.careCenter.centerStreetAddress}
-                        </Text>
-                      </View>
-                      <TouchableOpacity
-                        style={styles.removeButton}
-                        onPress={removeCareCenter}
-                        activeOpacity={0.7}
-                      >
-                        <X size={16} color="#6B7280" />
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
+                  <View style={styles.zipCodeRow}>
+                    <TextInput
+                      style={[styles.textInput, styles.zipCodeInput]}
+                      placeholder="우편번호"
+                      value={formData.centerAddress}
+                      editable={false}
+                      placeholderTextColor="#9CA3AF"
+                    />
                     <TouchableOpacity
-                      style={styles.careCenterSearchButton}
-                      onPress={() => setIsCareCenterModalOpen(true)}
+                      style={styles.searchButton}
+                      onPress={searchCenterZipCode}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.careCenterSearchText}>요양원/보호센터를 검색하세요</Text>
-                      <Search size={16} color="#6B7280" />
+                      <Search size={16} color="white" style={styles.searchIcon} />
+                      <Text style={styles.searchButtonText}>검색</Text>
                     </TouchableOpacity>
-                  )}
+                  </View>
 
-                  {formData.isElderly && !formData.careCenter && (
+                  <TextInput
+                    style={[styles.textInput, { marginBottom: 0 }]}
+                    placeholder="기본주소"
+                    value={formData.centerStreetAddress}
+                    editable={false}
+                    placeholderTextColor="#9CA3AF"
+                  />
+
+                  {formData.isElderly && !formData.centerAddress && (
                     <Text style={styles.warningText}>
-                      노인 이용자는 요양원/보호센터 선택이 필요합니다
+                      노인 이용자는 센터 주소 입력이 필요합니다
                     </Text>
                   )}
                 </View>
@@ -509,69 +502,23 @@ const SignupPage: React.FC = () => {
           </View>
         </ScrollView>
 
-        {/* 요양원/보호센터 검색 모달 */}
-        <Modal
-          visible={isCareCenterModalOpen}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setIsCareCenterModalOpen(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>
-                요양원/보호센터 검색
-              </Text>
-              
-              <TextInput
-                style={styles.modalSearchInput}
-                placeholder="이름 또는 주소로 검색"
-                value={searchTerm}
-                onChangeText={setSearchTerm}
-                placeholderTextColor="#9CA3AF"
+        {/* 센터 주소 검색 모달 */}
+        {isCenterPostcodeMode && (
+          <Modal visible={true} animationType="slide">
+            <SafeAreaView style={styles.container}>
+              <View style={styles.postcodeHeader}>
+                <Text style={styles.postcodeTitle}>센터 주소 검색</Text>
+                <TouchableOpacity onPress={closeCenterDaumPostcode} style={styles.closeButton}>
+                  <X size={24} color="#ffffff" />
+                </TouchableOpacity>
+              </View>
+              <DaumPostcode
+                onSubmit={handleCenterDaumPostcode}
+                onClose={closeCenterDaumPostcode}
               />
-
-              <FlatList
-                data={filteredCenters}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.careCenterItem}
-                    onPress={() => selectCareCenter(item)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.careCenterItemHeader}>
-                      <Text style={styles.careCenterItemName}>
-                        {item.name}
-                      </Text>
-                      <View style={styles.careCenterItemTypeTag}>
-                        <Text style={styles.careCenterItemTypeText}>{item.type}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.careCenterItemAddressRow}>
-                      <MapPin size={12} color="#6B7280" style={styles.mapIcon} />
-                      <Text style={styles.careCenterItemAddress}>
-                        {item.centerStreetAddress}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                )}
-                ListEmptyComponent={
-                  <Text style={styles.emptyText}>
-                    검색 결과가 없습니다
-                  </Text>
-                }
-              />
-
-              <TouchableOpacity
-                style={styles.modalCloseButton}
-                onPress={() => setIsCareCenterModalOpen(false)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.modalCloseButtonText}>닫기</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+            </SafeAreaView>
+          </Modal>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

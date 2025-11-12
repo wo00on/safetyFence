@@ -1,10 +1,9 @@
 import Global from '@/constants/Global';
 import { useNavigation } from '@react-navigation/native';
-import axios from 'axios';
 import {
   ChevronRight,
   LogOut,
-  MapPin, // Added MapPin
+  MapPin,
   Settings,
   Shield,
   User
@@ -22,29 +21,11 @@ import {
   View
 } from 'react-native';
 import BottomNavigation from '../components/BottomNavigation';
+import { userService } from '../services/userService';
+import { storage } from '../utils/storage';
+import type { MyPageData, MyPageGeofence } from '../types/api';
 
 // 타입 정의
-interface UserData {
-  name: string;
-  number: string;
-  homeStreetAddress: string;
-  homeStreetAddressDetail: string;
-  centerStreetAddress: string;
-  linkCode: string;
-}
-
-interface GeofenceData {
-  id: string;
-  name: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-  radius: number;
-  type: 'permanent' | 'temporary';
-  startTime?: string; // ISO string or similar
-  endTime?: string;   // ISO string or similar
-}
-
 interface PasswordData {
   currentPassword: string;
   newPassword: string;
@@ -53,8 +34,7 @@ interface PasswordData {
 
 const MyPage: React.FC = () => {
   const navigation = useNavigation();
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [geofences, setGeofences] = useState<GeofenceData[]>([]);
+  const [userData, setUserData] = useState<MyPageData | null>(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState<boolean>(false);
   const [passwordData, setPasswordData] = useState<PasswordData>({
     currentPassword: "",
@@ -69,58 +49,16 @@ const MyPage: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    // 더미 데이터 사용
-    const DUMMY_USER_DATA: UserData = {
-      name: "김더미",
-      number: "01012345678",
-      homeStreetAddress: "서울특별시 강남구 테헤란로 123",
-      homeStreetAddressDetail: "101동 1001호",
-      centerStreetAddress: "서울특별시 서초구 서초대로 456",
-      linkCode: "ABCDEF",
-    };
-
-    const DUMMY_GEOFENCES: GeofenceData[] = [
-      {
-        id: "geo1",
-        name: "집",
-        address: "서울특별시 강남구 테헤란로 123",
-        latitude: 37.5665,
-        longitude: 126.9780,
-        radius: 100,
-        type: "permanent",
-      },
-      {
-        id: "geo2",
-        name: "병원",
-        address: "서울특별시 서초구 서초대로 456",
-        latitude: 37.4830,
-        longitude: 127.0320,
-        radius: 50,
-        type: "temporary",
-        startTime: "09:00",
-        endTime: "17:00",
-      },
-      {
-        id: "geo3",
-        name: "경로당",
-        address: "서울특별시 송파구 올림픽로 789",
-        latitude: 37.5145,
-        longitude: 127.1050,
-        radius: 70,
-        type: "permanent",
-      },
-    ];
-
     try {
-      // API 호출 대신 더미 데이터 설정
-      await new Promise(resolve => setTimeout(resolve, 500)); // 로딩 효과를 위한 지연
-      setUserData(DUMMY_USER_DATA);
-      setGeofences(DUMMY_GEOFENCES);
+      // API 호출: GET /get/myPageData
+      const data = await userService.getMyPageData();
+      setUserData(data);
+      console.log('마이페이지 데이터 로드 성공:', data);
     } catch (err: any) {
       console.error('사용자 정보 불러오기 실패:', err);
-      const msg = err?.message || '더미 데이터 로드 실패';
+      const msg = err?.message || '사용자 정보 로드 실패';
       setError(msg);
-      Alert.alert('오류', '더미 사용자 정보를 불러올 수 없습니다.');
+      Alert.alert('오류', '사용자 정보를 불러오는 데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -136,20 +74,25 @@ const MyPage: React.FC = () => {
       return;
     }
 
+    if (!passwordData.currentPassword || !passwordData.newPassword) {
+      Alert.alert('오류', '모든 필드를 입력해주세요.');
+      return;
+    }
+
     try {
-      // 실제 구현에서는 서버 API 호출
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // API 호출: PATCH /mypage/password
+      await userService.changePassword({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+
       setIsPasswordModalOpen(false);
-
-      // api 요청
       setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-
-
-
       Alert.alert('성공', '비밀번호가 변경되었습니다.');
-    } catch (error) {
+    } catch (error: any) {
       console.error('비밀번호 변경 실패:', error);
-      Alert.alert('오류', '비밀번호 변경에 실패했습니다.');
+      const message = error.response?.data?.message || '비밀번호 변경에 실패했습니다.';
+      Alert.alert('오류', message);
     }
   };
 
@@ -163,13 +106,19 @@ const MyPage: React.FC = () => {
           text: '로그아웃',
           onPress: async () => {
             try {
-                Global.NUMBER = "";
-                Global.TARGET_NUMBER = "";
-                Global.USER_ROLE = "";
-          
+              // AsyncStorage 클리어
+              await storage.clearAll();
+
+              // Global 상태 초기화
+              Global.NUMBER = "";
+              Global.TARGET_NUMBER = "";
+              Global.USER_ROLE = "";
+
               navigation.navigate('index' as never);
+              console.log('로그아웃 성공');
             } catch (error) {
               console.error('로그아웃 실패:', error);
+              Alert.alert('오류', '로그아웃 처리 중 문제가 발생했습니다.');
             }
           },
         },
@@ -309,21 +258,12 @@ const MyPage: React.FC = () => {
 
                 <View className="space-y-2">
                   <ProfileItem label="이름" value={userData.name} icon={<User size={18} color="#6B7280" />} />
-                  <ProfileItem label="전화번호" value={userData.number} icon={<Text className="text-lg">📞</Text>} />
-                  <ProfileItem
-                    label="주소"
-                    value={
-                      <View>
-                        <Text className="text-base font-semibold text-gray-800">{userData.homeStreetAddress}</Text>
-                        <Text className="text-sm text-gray-600">{userData.homeStreetAddressDetail}</Text>
-                      </View>
-                    }
-                    icon={<MapPin size={18} color="#6B7280" />}
-                  />
+                  <ProfileItem label="생년월일" value={userData.birth} icon={<Text className="text-lg">🎂</Text>} />
+                  <ProfileItem label="우편번호" value={userData.homeAddress} icon={<MapPin size={18} color="#6B7280" />} />
 
                   {Global.USER_ROLE === 'user' && (
                     <>
-                      <ProfileItem label="센터 주소" value={userData.centerStreetAddress} icon={<Text className="text-lg">🏥</Text>} />
+                      <ProfileItem label="센터 우편번호" value={userData.centerAddress} icon={<Text className="text-lg">🏥</Text>} />
                       <ProfileItem label="링크 코드" value={userData.linkCode} icon={<Text className="text-lg">🔗</Text>} />
                     </>
                    )}
@@ -340,20 +280,20 @@ const MyPage: React.FC = () => {
                 </View>
               </CardHeader>
               <CardContent>
-                {geofences.length > 0 ? (
+                {userData.geofences && userData.geofences.length > 0 ? (
                   <View className="space-y-3">
-                    {geofences.map((geofence) => (
+                    {userData.geofences.map((geofence) => (
                       <View key={geofence.id} className="bg-gray-50 p-3 rounded-lg border border-gray-100">
                         <Text className="font-medium text-gray-900">{geofence.name}</Text>
                         <Text className="text-sm text-gray-600">{geofence.address}</Text>
-                        {geofence.type === 'temporary' && geofence.startTime && geofence.endTime && (
+                        {geofence.type === 1 && geofence.startTime && geofence.endTime && (
                           <Text className="text-xs text-gray-500 mt-1">
                             시간: {geofence.startTime} - {geofence.endTime}
                           </Text>
                         )}
-                        <View className={`self-start mt-2 px-2 py-1 rounded-full ${geofence.type === 'permanent' ? 'bg-green-100' : 'bg-yellow-100'}`}>
-                          <Text className={`text-xs font-semibold ${geofence.type === 'permanent' ? 'text-green-700' : 'text-yellow-700'}`}>
-                            {geofence.type === 'permanent' ? '영구 영역' : '일시적 영역'}
+                        <View className={`self-start mt-2 px-2 py-1 rounded-full ${geofence.type === 0 ? 'bg-green-100' : 'bg-yellow-100'}`}>
+                          <Text className={`text-xs font-semibold ${geofence.type === 0 ? 'text-green-700' : 'text-yellow-700'}`}>
+                            {geofence.type === 0 ? '영구 영역' : '일시적 영역'}
                           </Text>
                         </View>
                       </View>

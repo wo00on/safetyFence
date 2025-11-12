@@ -1,10 +1,9 @@
-import Global from '@/constants/Global';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import axios from 'axios';
 import { Bell, Clock, MapPin } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   FlatList,
   SafeAreaView,
   StatusBar,
@@ -12,6 +11,8 @@ import {
   View
 } from 'react-native';
 import BottomNavigation from '../components/BottomNavigation';
+import { logService } from '../services/logService';
+import type { LogItem } from '../types/api';
 
 // 라우트 파라미터 타입 정의
 type RootStackParamList = {
@@ -23,70 +24,55 @@ type RootStackParamList = {
 // navigation 타입 명시
 type NavigationProp = StackNavigationProp<RootStackParamList, 'LogPage'>;
 
-// 알림 타입
-interface Notification {
-  number: string;
-  name: string;
-  departureTime: string;
-  arrivalTime: string;
-  departureLocation: string;
-  arrivalLocation: string;
-}
-
 const NotificationsPage: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [logs, setLogs] = useState<LogItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const fetchNotifications = async () => {
+    const fetchLogs = async () => {
+      setIsLoading(true);
       try {
-        const response = await axios.post(`${Global.URL}/log/getLogList`, {
-          number: Global.NUMBER,
-        });
-        setNotifications(response.data);
+        // API 호출: GET /logs
+        const data = await logService.getLogs();
+        setLogs(data);
+        console.log('로그 데이터 로드 성공:', data.length);
       } catch (error) {
-        console.error('알림 불러오기 실패:', error);
+        console.error('로그 불러오기 실패:', error);
+        Alert.alert('오류', '로그 데이터를 불러오는 데 실패했습니다.');
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    fetchNotifications();
+    fetchLogs();
   }, []);
 
-  
-
-  const NotificationCard: React.FC<{ item: Notification }> = ({ item }) => (
-  <View className="bg-white rounded-lg shadow-sm mb-4 p-4">
-    <View className="flex-row items-start justify-between">
-      <View className="flex-1">
-        <View className="flex-row items-center mb-2">
-          <View className="h-12 w-12 bg-blue-100 rounded-full items-center justify-center mr-3 mt-2">
-            <MapPin size={20} color="#2563eb" />
-          </View>
-          <View className="flex-1">
-            <Text className="font-medium text-gray-900">{item.name} 님의 이동 기록</Text>
-            <View className="flex-row items-center mt-1">
-              <Clock size={12} color="#6b7280" />
-              <Text className="text-sm text-gray-500 ml-1">
-                출발: {item.departureTime.replace('T', ' ')}
-              </Text>
+  const LogCard: React.FC<{ item: LogItem }> = ({ item }) => (
+    <View className="bg-white rounded-lg shadow-sm mb-4 p-4">
+      <View className="flex-row items-start justify-between">
+        <View className="flex-1">
+          <View className="flex-row items-center mb-2">
+            <View className="h-12 w-12 bg-blue-100 rounded-full items-center justify-center mr-3">
+              <MapPin size={20} color="#2563eb" />
             </View>
-            <View className="flex-row items-center mt-1">
-              <Clock size={12} color="#6b7280" />
-              <Text className="text-sm text-gray-500 ml-1">
-                도착: {item.arrivalTime.replace('T', ' ')}
-              </Text>
+            <View className="flex-1">
+              <Text className="font-medium text-gray-900">{item.location}</Text>
+              <View className="flex-row items-center mt-1">
+                <Clock size={12} color="#6b7280" />
+                <Text className="text-sm text-gray-500 ml-1">
+                  도착: {item.arriveTime}
+                </Text>
+              </View>
             </View>
           </View>
+          <Text className="text-sm text-gray-600 mt-2">
+            {item.locationAddress}
+          </Text>
         </View>
-        <Text className="text-sm text-gray-600 mt-2">
-          {item.departureLocation}에서 {item.arrivalLocation}으로 이동하셨습니다.
-        </Text>
       </View>
     </View>
-  </View>
-);
-
-
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
@@ -98,9 +84,9 @@ const NotificationsPage: React.FC = () => {
           </View>
 
           <FlatList
-            data={notifications}
-            renderItem={({ item }) => <NotificationCard item={item} />}
-            keyExtractor={(item, index) => index.toString()}
+            data={logs}
+            renderItem={({ item }) => <LogCard item={item} />}
+            keyExtractor={(item) => item.id.toString()}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 100 }}
             ListEmptyComponent={

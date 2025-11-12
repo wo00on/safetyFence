@@ -1,5 +1,7 @@
 import '../src/tasks/locationTask';
 import Global from '@/constants/Global';
+import { authService } from '../services/authService';
+import { storage } from '../utils/storage';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
@@ -9,7 +11,9 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
   ScrollView,
+  StatusBar,
   Text,
   TextInput,
   TouchableOpacity,
@@ -25,19 +29,34 @@ const LoginPage: React.FC = () => {
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const handleLogin = async () => {
+    // 입력 검증
     if (!number.trim() || !password.trim()) {
       Alert.alert('입력 오류', '전화번호와 비밀번호를 입력해주세요.');
       return;
     }
+
     setIsLoading(true);
     try {
-      Global.NUMBER = number;
-      console.log('로그인 성공:', { number, password });
+      // API 호출: POST /user/signIn
+      const response = await authService.signIn({
+        number: number.trim(),
+        password: password.trim(),
+      });
+
+      console.log('로그인 성공:', response);
+
+      // Global 상태 업데이트
+      Global.NUMBER = response.number;
+
+      // AsyncStorage에 로그인 정보 저장
+      await storage.setLoginInfo(response.apiKey, response.number, response.name);
+
+      // 역할 선택 페이지로 이동
       navigation.navigate('SelectRole' as never);
     } catch (error: any) {
-      const message = error.response?.data?.message || '로그인 실패, react-native 오류.';
+      const message = error.response?.data?.message || '로그인에 실패했습니다. 다시 시도해주세요.';
       Alert.alert('로그인 실패', message);
-      console.error('로그인 실패 : ', error);
+      console.error('로그인 실패:', error);
     } finally {
       setIsLoading(false);
     }
@@ -56,19 +75,21 @@ const LoginPage: React.FC = () => {
   const blurredInputWrapperStyle = 'border-gray-100 bg-gray-50';
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 20}
-      style={{ flex: 1 }}
-      className="bg-green-50 pt-safe"
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View className="w-full max-w-sm mx-auto">
+    <SafeAreaView style={{ flex: 1 }} className="bg-green-50">
+      <StatusBar barStyle="dark-content" backgroundColor="#f0fdf4" />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        style={{ flex: 1 }}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingVertical: 40 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View className="flex-1 justify-center">
+              <View className="w-full max-w-sm mx-auto">
             {/* 로고 및 헤더 섹션 */}
             <View className="items-center mb-12">
               <View className="mb-5 overflow-hidden">
@@ -184,15 +205,17 @@ const LoginPage: React.FC = () => {
             </View>
 
             {/* 추가 정보 */}
-            <View className="mt-12 items-center">
+            <View className="mt-8 items-center">
               <Text style={{ fontFamily: 'System' }} className="text-xs text-gray-400 font-light">
                 로그인함으로써 서비스 이용약관에 동의합니다
               </Text>
             </View>
-          </View>
-        </ScrollView>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+              </View>
+            </View>
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

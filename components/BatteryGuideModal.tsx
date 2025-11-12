@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { Modal, View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import * as Device from 'expo-device';
 
 interface BatteryGuideModalProps {
@@ -42,7 +42,6 @@ const BatteryGuideModal: React.FC<BatteryGuideModalProps> = ({ visible, onClose 
               나타나는 옵션 중에서 '이 앱 잠금' 또는 '잠금' (자물쇠 모양 아이콘)을 선택하여 앱이 강제로 종료되지 않도록 합니다.
             </Text>
 
-            {/* 추가 제조사별 안내가 필요하면 여기에 추가 */}
             {manufacturer.includes('Samsung') && (
               <>
                 <Text style={styles.instructionTitle}>삼성폰 추가 설정 (배터리 최적화 해제)</Text>
@@ -61,10 +60,7 @@ const BatteryGuideModal: React.FC<BatteryGuideModalProps> = ({ visible, onClose 
             )}
           </ScrollView>
 
-          <TouchableOpacity
-            style={styles.button}
-            onPress={onClose}
-          >
+          <TouchableOpacity style={styles.button} onPress={onClose}>
             <Text style={styles.buttonText}>확인</Text>
           </TouchableOpacity>
         </View>
@@ -87,14 +83,11 @@ const styles = StyleSheet.create({
     padding: 35,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
-    maxHeight: '80%', // 스크롤뷰를 위해 최대 높이 설정
+    maxHeight: '80%',
     width: '90%',
   },
   scrollView: {
