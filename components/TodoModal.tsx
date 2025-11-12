@@ -33,16 +33,39 @@ const TodoModal: React.FC<TodoModalProps> = ({
   onSave,
   selectedDate,
 }) => {
-  const [formData, setFormData] = useState<TodoData>({
+  const [formData, setFormData] = useState<Omit<TodoData, 'time'>>({
     title: '',
-    time: new Date(),
     description: '',
     image: undefined,
   });
-
+  const [time, setTime] = useState({ hours: '09', minutes: '00' });
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [hours, setHours] = useState('09');
-  const [minutes, setMinutes] = useState('00');
+
+  const handleClose = () => {
+    setFormData({ title: '', description: '', image: undefined });
+    setTime({ hours: '09', minutes: '00' });
+    setShowTimePicker(false);
+    onClose();
+  };
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('권한 필요', '사진을 선택하려면 카메라 롤 접근 권한이 필요합니다.');
+      return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setFormData(prev => ({ ...prev, image: result.assets[0].uri }));
+    }
+  };
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -77,10 +100,9 @@ const TodoModal: React.FC<TodoModalProps> = ({
       return;
     }
 
-    // 설정된 시간을 Date 객체에 반영
-    const timeToSave = new Date(formData.time);
-    timeToSave.setHours(parseInt(hours));
-    timeToSave.setMinutes(parseInt(minutes));
+    const dateToSave = new Date();
+    dateToSave.setHours(parseInt(time.hours, 10));
+    dateToSave.setMinutes(parseInt(time.minutes, 10));
 
     onSave({
       ...formData,
@@ -89,42 +111,31 @@ const TodoModal: React.FC<TodoModalProps> = ({
     handleClose();
   };
 
-  const adjustHours = (increment: number) => {
-    const current = parseInt(hours);
-    let newValue = current + increment;
-    if (newValue < 0) newValue = 23;
-    if (newValue > 23) newValue = 0;
-    setHours(newValue.toString().padStart(2, '0'));
-  };
+  const adjustTime = (unit: 'hours' | 'minutes', increment: number) => {
+    setTime(prev => {
+      let currentValue = parseInt(prev[unit], 10);
+      let newValue: number;
+      const max = unit === 'hours' ? 23 : 59;
+      const step = unit === 'minutes' ? 5 : 1;
 
-  const adjustMinutes = (increment: number) => {
-    const current = parseInt(minutes);
-    let newValue = current + increment;
-    if (newValue < 0) newValue = 55;
-    if (newValue > 59) newValue = 0;
-    setMinutes(newValue.toString().padStart(2, '0'));
-  };
+      newValue = currentValue + (increment * step);
 
-  const handleHoursChange = (text: string) => {
+      if (newValue < 0) newValue = max - (unit === 'minutes' ? step - 1 : 0);
+      if (newValue > max) newValue = 0;
+      
+      return { ...prev, [unit]: newValue.toString().padStart(2, '0') };
+    });
+  };
+  
+  const handleTimeChange = (unit: 'hours' | 'minutes', text: string) => {
     const num = text.replace(/[^0-9]/g, '');
     if (num === '') {
-      setHours('00');
+      setTime(prev => ({ ...prev, [unit]: '00' }));
     } else {
-      const value = parseInt(num);
-      if (value >= 0 && value <= 23) {
-        setHours(value.toString().padStart(2, '0'));
-      }
-    }
-  };
-
-  const handleMinutesChange = (text: string) => {
-    const num = text.replace(/[^0-9]/g, '');
-    if (num === '') {
-      setMinutes('00');
-    } else {
-      const value = parseInt(num);
-      if (value >= 0 && value <= 59) {
-        setMinutes(value.toString().padStart(2, '0'));
+      const value = parseInt(num, 10);
+      const max = unit === 'hours' ? 23 : 59;
+      if (value >= 0 && value <= max) {
+        setTime(prev => ({ ...prev, [unit]: value.toString().padStart(2, '0') }));
       }
     }
   };
@@ -159,11 +170,10 @@ const TodoModal: React.FC<TodoModalProps> = ({
               </Text>
             </View>
 
-            {/* 할 일 제목 */}
-            <View className="mb-6">
+            <View className="mb-5">
               <Text className="text-sm font-medium text-gray-700 mb-2">할 일 제목</Text>
               <TextInput
-                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900"
+                className="border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900"
                 placeholder="예) 혈압약 복용, 운동하기"
                 value={formData.title}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, title: text }))}
@@ -171,8 +181,7 @@ const TodoModal: React.FC<TodoModalProps> = ({
               />
             </View>
 
-            {/* 시간 설정 */}
-            <View className="mb-6">
+            <View className="mb-5">
               <Text className="text-sm font-medium text-gray-700 mb-2">시간</Text>
               {!showTimePicker ? (
                 <TouchableOpacity
@@ -180,69 +189,52 @@ const TodoModal: React.FC<TodoModalProps> = ({
                   onPress={() => setShowTimePicker(true)}
                 >
                   <Clock size={20} color="#6b7280" />
-                  <Text className="ml-3 text-gray-900">{hours}:{minutes}</Text>
+                  <Text className="ml-3 text-base text-gray-900">{time.hours}:{time.minutes}</Text>
                 </TouchableOpacity>
               ) : (
-                <View className="border border-gray-300 rounded-lg p-4">
+                <View className="border border-gray-200 bg-gray-50 rounded-lg p-4">
                   <View className="flex-row justify-center items-center">
-                    {/* 시간 선택 */}
                     <View className="items-center">
-                      <TouchableOpacity onPress={() => adjustHours(1)} className="p-2">
-                        <ChevronUp size={24} color="#6b7280" />
-                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => adjustTime('hours', 1)} className="p-2"><ChevronUp size={24} color="#6b7280" /></TouchableOpacity>
                       <TextInput
-                        className="border border-gray-300 rounded-lg w-16 h-12 text-center text-xl font-medium text-gray-900"
-                        value={hours}
-                        onChangeText={handleHoursChange}
+                        className="border border-gray-300 bg-white rounded-lg w-20 h-14 text-center text-2xl font-bold text-gray-900"
+                        value={time.hours}
+                        onChangeText={(text) => handleTimeChange('hours', text)}
                         keyboardType="number-pad"
                         maxLength={2}
                       />
-                      <TouchableOpacity onPress={() => adjustHours(-1)} className="p-2">
-                        <ChevronDown size={24} color="#6b7280" />
-                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => adjustTime('hours', -1)} className="p-2"><ChevronDown size={24} color="#6b7280" /></TouchableOpacity>
                     </View>
-
-                    <Text className="text-2xl font-medium text-gray-900 mx-3">:</Text>
-
-                    {/* 분 선택 */}
+                    <Text className="text-3xl font-bold text-gray-900 mx-2">:</Text>
                     <View className="items-center">
-                      <TouchableOpacity onPress={() => adjustMinutes(5)} className="p-2">
-                        <ChevronUp size={24} color="#6b7280" />
-                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => adjustTime('minutes', 1)} className="p-2"><ChevronUp size={24} color="#6b7280" /></TouchableOpacity>
                       <TextInput
-                        className="border border-gray-300 rounded-lg w-16 h-12 text-center text-xl font-medium text-gray-900"
-                        value={minutes}
-                        onChangeText={handleMinutesChange}
+                        className="border border-gray-300 bg-white rounded-lg w-20 h-14 text-center text-2xl font-bold text-gray-900"
+                        value={time.minutes}
+                        onChangeText={(text) => handleTimeChange('minutes', text)}
                         keyboardType="number-pad"
                         maxLength={2}
                       />
-                      <TouchableOpacity onPress={() => adjustMinutes(-5)} className="p-2">
-                        <ChevronDown size={24} color="#6b7280" />
-                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => adjustTime('minutes', -1)} className="p-2"><ChevronDown size={24} color="#6b7280" /></TouchableOpacity>
                     </View>
                   </View>
-
-                  <TouchableOpacity
-                    className="bg-gray-100 py-2 rounded-lg mt-3"
-                    onPress={() => setShowTimePicker(false)}
-                  >
-                    <Text className="text-gray-700 text-center font-medium">확인</Text>
+                  <TouchableOpacity className="bg-gray-200 py-2.5 rounded-lg mt-3" onPress={() => setShowTimePicker(false)}>
+                    <Text className="text-gray-800 text-center font-semibold">확인</Text>
                   </TouchableOpacity>
                 </View>
               )}
             </View>
 
-            {/* 설명 (선택사항) */}
-            <View className="mb-6">
+            <View className="mb-5">
               <Text className="text-sm font-medium text-gray-700 mb-2">설명 (선택사항)</Text>
               <TextInput
-                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900"
+                className="border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900 h-24"
                 placeholder="추가 설명을 입력하세요"
                 value={formData.description}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
                 placeholderTextColor="#9ca3af"
                 multiline
-                numberOfLines={3}
+                textAlignVertical="top"
               />
             </View>
 
@@ -274,10 +266,10 @@ const TodoModal: React.FC<TodoModalProps> = ({
           {/* 추가하기 버튼 */}
           <View className="px-6 pb-6 border-t border-gray-200 pt-4">
             <TouchableOpacity
-              className="bg-green-500 py-4 rounded-lg"
+              className="bg-green-500 py-4 rounded-xl"
               onPress={handleSave}
             >
-              <Text className="text-white text-center font-medium text-lg">추가하기</Text>
+              <Text className="text-white text-center font-semibold text-lg">추가하기</Text>
             </TouchableOpacity>
           </View>
         </View>

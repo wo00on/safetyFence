@@ -127,7 +127,7 @@ const TodoCard: React.FC<{ todo: Todo; onDelete: (id: number) => void }> = React
   <View className="bg-white rounded-xl shadow p-4 mb-3 border border-gray-100">
     <View className="flex-row items-start">
       <View className="h-11 w-11 bg-purple-50 rounded-lg items-center justify-center mr-3">
-        <CheckSquare size={20} color="#ffffffff" />
+        <CheckSquare size={20} color="#8B5CF6" />
       </View>
       <View className="flex-1">
         <Text className="text-base font-bold text-gray-900 mb-1">{todo.title}</Text>

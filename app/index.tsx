@@ -1,3 +1,4 @@
+import '../src/tasks/locationTask';
 import Global from '@/constants/Global';
 import { authService } from '../services/authService';
 import { storage } from '../utils/storage';

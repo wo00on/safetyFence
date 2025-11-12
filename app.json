@@ -33,6 +33,14 @@
         "googleMaps": {
           "apiKey": "AIzaSyBwR5FvsDa4kUc3FTD14svwssHNM-tUhSM"
         }
+      },
+      "permissions": [
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE"
+      ],
+      "foregroundService": {
+        "notificationTitle": "안전 울타리",
+        "notificationBody": "어르신의 위치를 안전하게 공유 중입니다."
       }
     },
     "plugins": [

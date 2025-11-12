@@ -11,6 +11,7 @@ import {
   MapPin, // FAB 버튼용 MapPin은 유지
   Plus,
 } from 'lucide-react-native';
+import { Accelerometer } from 'expo-sensors';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
