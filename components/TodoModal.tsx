@@ -67,33 +67,6 @@ const TodoModal: React.FC<TodoModalProps> = ({
     }
   };
 
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('권한 필요', '사진을 선택하려면 갤러리 접근 권한이 필요합니다.');
-      return;
-    }
-
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      setFormData(prev => ({ ...prev, image: result.assets[0].uri }));
-    }
-  };
-
-  const handleClose = () => {
-    setFormData({ title: '', time: new Date(), description: '', image: undefined });
-    setHours('09');
-    setMinutes('00');
-    setShowTimePicker(false);
-    onClose();
-  };
-
   const handleSave = () => {
     if (!formData.title.trim()) {
       Alert.alert('입력 오류', '할 일 제목을 입력해주세요.');
@@ -106,7 +79,7 @@ const TodoModal: React.FC<TodoModalProps> = ({
 
     onSave({
       ...formData,
-      time: timeToSave,
+      time: dateToSave,
     });
     handleClose();
   };

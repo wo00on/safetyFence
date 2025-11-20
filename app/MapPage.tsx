@@ -1,21 +1,16 @@
 import Global from '@/constants/Global';
 import { customMapStyle } from '@/styles/MapPageStyles';
+import { useLocation } from '../contexts/LocationContext';
 import { geofenceService } from '../services/geofenceService';
 import type { GeofenceItem } from '../types/api';
-import { useLocation } from '../contexts/LocationContext';
 
-import apiClient from '@/utils/api/axiosConfig';
-import { isAxiosError } from 'axios';
-import * as Location from 'expo-location';
 import {
   MapPin, // FAB 버튼용 MapPin은 유지
   Plus,
 } from 'lucide-react-native';
-import { Accelerometer } from 'expo-sensors';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
-  AppState,
   Image, // Image 컴포넌트 임포트 확인
   Linking, // 설정으로 이동하기 위한 Linking 추가
   Platform,
@@ -24,9 +19,9 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native'; // react-native 임포트 정리
-import MapView, { Marker, PROVIDER_GOOGLE, Circle } from 'react-native-maps'; // Circle 추가
+import MapView, { Circle, Marker, PROVIDER_GOOGLE } from 'react-native-maps'; // Circle 추가
 import BottomNavigation from '../components/BottomNavigation';
 import GeofenceModal from '../components/GeofenceModal';
 
@@ -394,7 +389,7 @@ const MainPage: React.FC = () => {
             coordinate={{ latitude: fence.latitude, longitude: fence.longitude }}
             title={fence.name}
             description={`${fence.address} (${fence.type === 0 ? '영구' : '일시적'})`}
-            pinColor={fence.type === 0 ? '#25eb67' : '#04faac'}
+            pinColor={fence.type === 0 ? '#8fffb4ff' : '#04faac'}
             onCalloutPress={() => handleGeofenceDelete(fence.id, fence.name)}
           />
         </React.Fragment>

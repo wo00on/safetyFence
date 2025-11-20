@@ -326,7 +326,10 @@ const MyPage: React.FC = () => {
                     <ChevronRight size={18} color="#9CA3AF" />
                   </TouchableOpacity>
 
-                  <TouchableOpacity className="flex-row items-center justify-between py-2">
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('PrivacyPolicyPage' as never)}
+                    className="flex-row items-center justify-between py-2"
+                  >
                     <View className="flex-row items-center">
                       <User size={18} color="#4B5563" />
                       <Text className="ml-3 font-medium text-gray-800">개인정보 처리방침</Text>

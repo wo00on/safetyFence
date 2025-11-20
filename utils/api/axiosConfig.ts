@@ -1,7 +1,7 @@
-import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { Alert } from 'react-native';
-import { storage } from '../storage';
 import Global from '../../constants/Global';
+import { storage } from '../storage';
 
 /**
  * Axios 인스턴스 설정
@@ -13,7 +13,7 @@ import Global from '../../constants/Global';
 // Axios 인스턴스 생성
 const apiClient: AxiosInstance = axios.create({
   baseURL: Global.URL,
-  timeout: 10000,
+  timeout: 90000,
   headers: {
     'Content-Type': 'application/json',
   },
