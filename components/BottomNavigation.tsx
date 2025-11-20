@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router'; // Import useRouter
 import { Calendar, MapPin, User, Users } from 'lucide-react-native';
 import React, { useEffect } from 'react'; // Import useEffect
 import { Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface BottomNavigationProps {
   currentScreen?: string;
@@ -15,6 +16,7 @@ type BottomTabScreenName = 'MapPage' | 'CalendarPage' | 'MyPage' | 'LinkPage';
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) => {
   const navigation = useNavigation();
   const router = useRouter(); // Initialize useRouter
+  const insets = useSafeAreaInsets();
 
   const activeColor = '#20e066ff'; // 활성 (녹색)
   const inactiveColor = '#9ba5baff'; // 비활성 (회색)
@@ -51,7 +53,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
 
   if (Global.USER_ROLE === 'user') {
     return (
-      <View className="absolute bottom-4 left-4 right-4 bg-white/95 border border-gray-200/80 p-1 pb-3 rounded-2xl shadow-lg">
+      <View className="absolute bottom-4 left-4 right-4 bg-white/95 border border-green-500/80 p-1 pb-3 rounded-2xl shadow-lg" style={{ paddingBottom: insets.bottom > 0 ? insets.bottom : 12 }}>
         <View className="flex-row justify-evenly w-full">
           {/* --- 지도 --- */}
           <TouchableOpacity
@@ -93,7 +95,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
   if (Global.USER_ROLE === 'supporter') {
     // 보호자용 네비게이션 (4개 메뉴)
     return (
-      <View className="absolute bottom-4 left-4 right-4 bg-white/95 border border-gray-200/80 p-1 pb-3 rounded-2xl shadow-lg">
+      <View className="absolute bottom-4 left-4 right-4 bg-white/95 border border-green-500/80 p-1 pb-3 rounded-2xl shadow-lg" style={{ paddingBottom: insets.bottom > 0 ? insets.bottom : 12 }}>
         <View className="flex-row justify-evenly w-full">
           {/* --- 지도 --- */}
           <TouchableOpacity

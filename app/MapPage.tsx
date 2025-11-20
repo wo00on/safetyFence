@@ -409,31 +409,91 @@ const MainPage: React.FC = () => {
           : '서버 연결 안됨');
 
   return (
-    <SafeAreaView className="flex-1 bg-green-50">
+    <View className="flex-1 bg-green-50">
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
-      <View className="bg-white/90" style={{ paddingTop: StatusBar.currentHeight || 0 }}>
+      
+      {/* MapView가 전체 배경을 차지하도록 설정 */}
+      <MapView
+        ref={mapRef}
+        provider={PROVIDER_GOOGLE}
+        style={{ flex: 1 }}
+        region={region}
+        customMapStyle={customMapStyle}
+        showsCompass={false}
+        showsUserLocation={false}
+        showsMyLocationButton={false}
+        toolbarEnabled={false}
+      >
+        {userLocation && (
+          <Marker
+            coordinate={{
+              latitude: userLocation.lat,
+              longitude: userLocation.lng,
+            }}
+            title={userLocation.name}
+            description={isTracking ? "실시간 추적 중" : "현재 위치"}
+            anchor={{ x: 0.5, y: 1 }}
+            tracksViewChanges={tracksViewChanges}
+          >
+            <Image
+              source={require('../assets/images/mappin.png')}
+              style={{
+                width: 35,
+                height: 35,
+                resizeMode: 'contain',
+              }}
+              onLoad={() => setTracksViewChanges(false)}
+            />
+          </Marker>
+        )}
+
+        {/* 지오펜스 Circle과 Marker 렌더링 */}
+        {geofences.map((fence) => (
+          <React.Fragment key={fence.id}>
+            <Circle
+              center={{ latitude: fence.latitude, longitude: fence.longitude }}
+              radius={200} // 기본 반경 200미터
+              strokeColor="rgba(37, 235, 103, 0.5)"
+              strokeWidth={2}
+              fillColor="rgba(37, 235, 103, 0.15)"
+            />
+            <Marker
+              coordinate={{ latitude: fence.latitude, longitude: fence.longitude }}
+              title={fence.name}
+              description={`${fence.address} (${fence.type === 0 ? '영구' : '일시적'})`}
+              pinColor={fence.type === 0 ? '#8fffb4ff' : '#04faac'}
+              onCalloutPress={() => handleGeofenceDelete(fence.id, fence.name)}
+            />
+          </React.Fragment>
+        ))}
+      </MapView>
+
+      {/* Header (상단에 오버레이) */}
+      <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0 }} edges={['top']}>
         <View className="p-3">
-          <View className="border border-green-400 rounded-xl p-3 bg-green-50/50">
+          <View className="border border-green-400 rounded-xl p-3 bg-white/90 shadow-md">
             <Text style={{ fontFamily: 'System' }} className="text-lg font-bold text-green-800 text-center">{headerText}</Text>
             <Text style={{ fontFamily: 'System' }} className="text-sm text-green-600 text-center mt-1">{headerSubText}</Text>
           </View>
         </View>
-      </View>
-      <View className="flex-1 relative">
-        {renderMapView(userLocation.name)}
+      </SafeAreaView>
+
+      {/* Floating Buttons and Bottom Navigation (하단에 오버레이) */}
+      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
         <FloatingButtons />
         <BottomNavigation currentScreen="MapPage" />
-        <GeofenceModal
-           visible={isGeofenceModalVisible}
-           onClose={() => setIsGeofenceModalVisible(false)}
-           onSave={handleGeofenceSave}
-           initialLocation={currentLocation ? {
-             latitude: currentLocation.latitude,
-             longitude: currentLocation.longitude
-           } : undefined}
-         />
       </View>
-    </SafeAreaView>
+
+      <GeofenceModal
+         visible={isGeofenceModalVisible}
+         onClose={() => setIsGeofenceModalVisible(false)}
+         onSave={handleGeofenceSave}
+         initialLocation={currentLocation ? {
+           latitude: currentLocation.latitude,
+           longitude: currentLocation.longitude
+         } : undefined}
+       />
+    </View>
   ); // return 닫는 괄호
 }; // MainPage 컴포넌트 닫는 괄호
 
