@@ -416,6 +416,7 @@ const MainPage: React.FC = () => {
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
+        // style={{ flex: 1 }}
         style={{ flex: 1 }}
         region={region}
         customMapStyle={customMapStyle}
