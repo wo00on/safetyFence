@@ -117,17 +117,6 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
             </Text>
           </TouchableOpacity>
 
-          {/* --- 설정 (마이페이지) --- */}
-          <TouchableOpacity
-            onPress={() => navigateToScreen('MyPage')} // 이동할 스크린 이름은 'MyPage' 유지
-            className="items-center py-2 px-4"
-          >
-            <User size={26} color={getIconColor('MyPage')} />
-            <Text style={{ fontFamily: 'System' }} className={`text-sm mt-1 ${getTextColor('MyPage')} ${getTextWeight('MyPage')}`}>
-              설정 {/* <-- "마이페이지"에서 "설정"으로 변경 */}
-            </Text>
-          </TouchableOpacity>
-
           {/* --- 이용자 --- */}
           <TouchableOpacity
             onPress={() => navigateToScreen('LinkPage')}
@@ -136,6 +125,17 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
             <Users size={26} color={getIconColor('LinkPage')} />
             <Text style={{ fontFamily: 'System' }} className={`text-sm mt-1 ${getTextColor('LinkPage')} ${getTextWeight('LinkPage')}`}>
               이용자
+            </Text>
+          </TouchableOpacity>
+
+          {/* --- 설정 (마이페이지) --- */}
+          <TouchableOpacity
+            onPress={() => navigateToScreen('MyPage')} // 이동할 스크린 이름은 'MyPage' 유지
+            className="items-center py-2 px-4"
+          >
+            <User size={26} color={getIconColor('MyPage')} />
+            <Text style={{ fontFamily: 'System' }} className={`text-sm mt-1 ${getTextColor('MyPage')} ${getTextWeight('MyPage')}`}>
+              설정 {/* <-- "마이페이지"에서 "설정"으로 변경 */}
             </Text>
           </TouchableOpacity>
         </View>
