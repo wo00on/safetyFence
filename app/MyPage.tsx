@@ -1,4 +1,6 @@
 import Global from '@/constants/Global';
+import { Image } from "react-native";
+
 import { useNavigation } from '@react-navigation/native';
 import {
   ChevronDown,
@@ -436,7 +438,7 @@ const MyPage: React.FC = () => {
           <Card>
             <CardContent>
               <View className="items-center py-2">
-                <Text className="text-sm text-gray-500">페이패스 v1.0.0</Text>
+                <Text className="text-sm text-gray-500">SafetyFence v1.0.0</Text>
               </View>
             </CardContent>
           </Card>
