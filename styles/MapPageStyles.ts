@@ -10,7 +10,7 @@ export const customMapStyle = [
   {
     featureType: 'all',
     elementType: 'labels.text.fill',
-    stylers: [{ color: '#222222' }],
+    stylers: [{ color: '#ad4c4cff' }],
   },
   {
     featureType: 'all',
@@ -26,12 +26,12 @@ export const customMapStyle = [
   {
     featureType: 'poi',
     elementType: 'geometry',
-    stylers: [{ color: '#f5f5f5' }],
+    stylers: [{ color: '#312020ff' }],
   },
   {
     featureType: 'poi',
     elementType: 'labels.text.fill',
-    stylers: [{ color: '#222222' }],
+    stylers: [{ color: '#512f2fff' }],
   },
   // 4. 공원(Park) 색상
   {
@@ -48,7 +48,7 @@ export const customMapStyle = [
   {
     featureType: 'road',
     elementType: 'geometry',
-    stylers: [{ color: '#ffffff' }], // 모든 도로 기본 흰색
+    stylers: [{ color: '#100f0fff' }], // 모든 도로 기본 흰색
   },
   {
     featureType: 'road.arterial',
@@ -63,7 +63,7 @@ export const customMapStyle = [
   {
     featureType: 'road.highway',
     elementType: 'labels.text.fill',
-    stylers: [{ color: '#616161' }],
+    stylers: [{ color: '#8d6e6eff' }],
   },
   {
     featureType: 'road.local',
@@ -74,7 +74,7 @@ export const customMapStyle = [
   {
     featureType: 'transit.line',
     elementType: 'geometry',
-    stylers: [{ color: '#e5e5e5' }],
+    stylers: [{ color: '#e5e5e5ff' }],
   },
   {
     featureType: 'transit.station',
@@ -85,11 +85,11 @@ export const customMapStyle = [
   {
     featureType: 'water',
     elementType: 'geometry',
-    stylers: [{ color: '#d4eefc' }], // 연한 파란색 배경
+    stylers: [{ color: '#0099feff' }], // 연한 파란색 배경
   },
   {
     featureType: 'water',
     elementType: 'labels.text.fill',
-    stylers: [{ color: '#3d85c6' }], // 파란색 텍스트
+    stylers: [{ color: '#000000ff' }], // 파란색 텍스트
   },
 ];
