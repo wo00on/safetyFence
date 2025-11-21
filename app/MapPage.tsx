@@ -1,3 +1,5 @@
+import { useRouter } from 'expo-router'; // useRouter 임포트
+import Ionicons from '@expo/vector-icons/Ionicons'; // Ionicons 임포트
 import Global from '@/constants/Global';
 import { customMapStyle } from '@/styles/MapPageStyles';
 import { useLocation } from '../contexts/LocationContext';
@@ -59,6 +61,8 @@ const MainPage: React.FC = () => {
     isWebSocketConnected,
     targetLocation,
   } = useLocation();
+
+  const router = useRouter(); // useRouter 초기화
 
   const mapRef = useRef<MapView>(null);
 
@@ -472,9 +476,25 @@ const MainPage: React.FC = () => {
       {/* Header (상단에 오버레이) */}
       <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0 }} edges={['top']}>
         <View className="p-3">
-          <View className="border border-green-400 rounded-xl p-3 bg-white/90 shadow-md">
-            <Text style={{ fontFamily: 'System' }} className="text-lg font-bold text-green-800 text-center">{headerText}</Text>
-            <Text style={{ fontFamily: 'System' }} className="text-sm text-green-600 text-center mt-1">{headerSubText}</Text>
+          <View 
+            className="border border-green-400 rounded-xl p-3 bg-white/90 shadow-md"
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+          >
+            {/* 뒤로가기 버튼 */}
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={{ padding: 8, backgroundColor: '#cfffe1ff', borderRadius: 20 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#000000ff" />
+            </TouchableOpacity>
+            
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: 'System' }} className="text-lg font-bold text-green-800 text-center">{headerText}</Text>
+              <Text style={{ fontFamily: 'System' }} className="text-sm text-green-600 text-center mt-1">{headerSubText}</Text>
+            </View>
+
+            {/* Spacer to keep the text centered */}
+            <View style={{ width: 40 }} /> 
           </View>
         </View>
       </SafeAreaView>

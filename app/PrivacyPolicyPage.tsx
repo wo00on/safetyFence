@@ -27,13 +27,13 @@ const PrivacyPolicyPage: React.FC = () => {
   return (
     <SafeAreaView className="flex-1 bg-white pt-safe">
       {/* 헤더 영역 */}
-      <View className="flex-row items-center justify-between p-4 border-b border-gray-200">
+      {/* <View className="flex-row items-center justify-between p-4 border-b border-gray-200">
         <TouchableOpacity onPress={() => navigation.goBack()} className="p-2">
           <ChevronLeft size={24} color="#1F2937" />
         </TouchableOpacity>
         <Text className="text-lg font-semibold text-gray-800">개인정보 처리방침</Text>
         <View className="w-10" />
-      </View>
+      </View> */}
 
       {/* 본문 스크롤 영역 */}
       <ScrollView className="flex-1 p-4">
