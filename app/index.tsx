@@ -1,6 +1,7 @@
 import '../src/tasks/locationTask';
 import Global from '@/constants/Global';
 import { authService } from '../services/authService';
+import { useLocation } from '@/contexts/LocationContext';
 import { storage } from '../utils/storage';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
@@ -23,6 +24,7 @@ import {
 
 const LoginPage: React.FC = () => {
   const navigation = useNavigation();
+  const { startTracking, connectWebSocket } = useLocation();
   const [number, setNumber] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -50,6 +52,10 @@ const LoginPage: React.FC = () => {
 
       // AsyncStorage에 로그인 정보 저장
       await storage.setLoginInfo(response.apiKey, response.number, response.name);
+
+      // 로그인 이후 위치 추적 및 WebSocket 시작
+      await startTracking();
+      connectWebSocket();
 
       // 역할 선택 페이지로 이동
       navigation.navigate('SelectRole' as never);

@@ -117,48 +117,82 @@ const MainPage: React.FC = () => {
     loadGeofences();
   }, [userRole]);
 
-  // 지오펜스 진입 감지 (user role일 때만)
+  // 지오펜스 진입 감지 (user role일 때만, 10초마다)
   useEffect(() => {
-    if (userRole !== 'user' || !currentLocation || geofences.length === 0) {
+    if (userRole !== 'user' || geofences.length === 0) {
       return;
     }
 
+    // Haversine 공식으로 거리 계산 (미터 단위)
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+      const R = 6371000; // 지구 반지름 (미터)
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLon = ((lon2 - lon1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+          Math.cos((lat2 * Math.PI) / 180) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    };
+
     const checkGeofenceEntry = async () => {
+      // 최신 currentLocation 사용
+      if (!currentLocation) return;
+
       const currentLat = currentLocation.latitude;
       const currentLng = currentLocation.longitude;
+      const now = new Date();
+      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-      // Haversine 공식으로 거리 계산 (미터 단위)
-      const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-        const R = 6371000; // 지구 반지름 (미터)
-        const dLat = ((lat2 - lat1) * Math.PI) / 180;
-        const dLon = ((lon2 - lon1) * Math.PI) / 180;
-        const a =
-          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-          Math.cos((lat1 * Math.PI) / 180) *
-            Math.cos((lat2 * Math.PI) / 180) *
-            Math.sin(dLon / 2) *
-            Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
+      // 시간 체크 헬퍼 함수
+      const isWithinTimeRange = (startTime: string | null, endTime: string | null): boolean => {
+        if (!startTime || !endTime) return true; // 시간 미설정 시 항상 활성
+
+        const [currentHour, currentMin] = currentTime.split(':').map(Number);
+        const [startHour, startMin] = startTime.split(':').map(Number);
+        const [endHour, endMin] = endTime.split(':').map(Number);
+
+        const currentMinutes = currentHour * 60 + currentMin;
+        const startMinutes = startHour * 60 + startMin;
+        const endMinutes = endHour * 60 + endMin;
+
+        // 자정을 넘는 경우 (예: 23:00 ~ 02:00)
+        if (startMinutes > endMinutes) {
+          return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+        }
+
+        // 일반 케이스 (예: 14:00 ~ 18:00)
+        return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
       };
 
       for (const fence of geofences) {
+        // 1. 거리 체크
         const distance = calculateDistance(currentLat, currentLng, fence.latitude, fence.longitude);
         const radius = 200; // 기본 반경 200미터
         const isInside = distance <= radius;
 
+        // 2. 시간 체크 (일시적 지오펜스만)
+        const isTimeActive = fence.type === 0 || isWithinTimeRange(fence.startTime, fence.endTime);
+
+        // 3. 진입 조건: 거리 내 + 시간 조건 만족
+        const canEnter = isInside && isTimeActive;
+
         // 진입 감지: 이전에 밖에 있었는데 지금 안에 들어옴
-        if (isInside && !lastGeofenceCheck[fence.id]) {
+        if (canEnter && !lastGeofenceCheck[fence.id]) {
           try {
             await geofenceService.recordEntry({ geofenceId: fence.id });
-            console.log(`지오펜스 진입 기록: ${fence.name}`);
+            console.log(`✅ 지오펜스 진입 기록: ${fence.name} (${fence.type === 0 ? '영구' : `일시 ${fence.startTime}-${fence.endTime}`})`);
             setLastGeofenceCheck(prev => ({ ...prev, [fence.id]: true }));
           } catch (error) {
-            console.error('지오펜스 진입 기록 실패:', error);
+            console.error('❌ 지오펜스 진입 기록 실패:', error);
           }
         }
-        // 이탈 감지: 밖으로 나간 경우 상태 초기화
-        else if (!isInside && lastGeofenceCheck[fence.id]) {
+        // 이탈 감지: 영구 지오펜스만 이탈 추적 (일시적 지오펜스는 진입 후 사라짐)
+        else if (fence.type === 0 && (!canEnter) && lastGeofenceCheck[fence.id]) {
+          console.log(`🚪 영구 지오펜스 이탈: ${fence.name}`);
           setLastGeofenceCheck(prev => {
             const updated = { ...prev };
             delete updated[fence.id];
@@ -168,8 +202,21 @@ const MainPage: React.FC = () => {
       }
     };
 
+    // 10초마다 지오펜스 검사
+    const geofenceCheckInterval = setInterval(() => {
+      checkGeofenceEntry();
+    }, 10000);
+
+    // 초기 검사 (즉시 실행)
     checkGeofenceEntry();
-  }, [currentLocation, geofences, userRole, lastGeofenceCheck]);
+
+    console.log('🔍 지오펜스 검사 시작 (10초 주기)');
+
+    return () => {
+      clearInterval(geofenceCheckInterval);
+      console.log('🔍 지오펜스 검사 중지');
+    };
+  }, [userRole, geofences]);
 
   const moveToMyLocation = () => {
     // Context에서 현재 위치 가져오기

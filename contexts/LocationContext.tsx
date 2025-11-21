@@ -75,6 +75,20 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
     try {
       setIsLoading(true);
 
+      if (!Global.NUMBER) {
+        const loginRequiredMessage = '로그인 후 위치 추적을 시작할 수 있습니다.';
+        console.warn('⚠️ 사용자 번호가 없어 위치 추적을 시작할 수 없음');
+        setError(loginRequiredMessage);
+        setIsLoading(false);
+        return;
+      }
+
+      if (isTracking) {
+        console.log('ℹ️ 이미 위치 추적 중');
+        setIsLoading(false);
+        return;
+      }
+
       // 권한 확인 및 요청
       let { status } = await Location.getForegroundPermissionsAsync();
       console.log('📍 초기 권한 상태:', status);
@@ -113,7 +127,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
       const subscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.High,
-          timeInterval: 5000, // 5초마다 업데이트
+          timeInterval: 2000, // 2초마다 업데이트
           distanceInterval: 10, // 10미터 이동 시 업데이트
         },
         (newLocation) => {
@@ -278,7 +292,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
     if (!currentLocation || !isTracking) return;
     if (!isWebSocketConnected) return;
 
-    // 15초마다 위치 전송
+    // 2초마다 위치 전송 (실시간 위치 공유)
     if (websocketSendInterval.current) {
       clearInterval(websocketSendInterval.current);
     }
@@ -293,14 +307,14 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
 
     websocketSendInterval.current = setInterval(() => {
       if (currentLocation && isWebSocketConnected) {
-        console.log('📡 포그라운드: WebSocket으로 위치 전송 (15초 주기)');
+        console.log('📡 포그라운드: WebSocket으로 위치 전송 (2초 주기)');
         websocketService.sendLocation({
           latitude: currentLocation.latitude,
           longitude: currentLocation.longitude,
           timestamp: currentLocation.timestamp,
         });
       }
-    }, 15000);
+    }, 2000);
 
     return () => {
       if (websocketSendInterval.current) {
