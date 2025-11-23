@@ -16,13 +16,13 @@ import {
   Image, // Image 컴포넌트 임포트 확인
   Linking, // 설정으로 이동하기 위한 Linking 추가
   Platform,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native'; // react-native 임포트 정리
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Circle, Marker, PROVIDER_GOOGLE } from 'react-native-maps'; // Circle 추가
 import BottomNavigation from '../components/BottomNavigation';
 import GeofenceModal from '../components/GeofenceModal';
@@ -550,21 +550,10 @@ const MainPage: React.FC = () => {
             className="border border-green-400 rounded-xl p-3 bg-white/90 shadow-md"
             style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
           >
-            {/* 뒤로가기 버튼 */}
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={{ padding: 8, backgroundColor: '#cfffe1ff', borderRadius: 20 }}
-            >
-              <Ionicons name="arrow-back" size={24} color="#000000ff" />
-            </TouchableOpacity>
-            
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, alignItems: 'center' }}>
               <Text style={{ fontFamily: 'System' }} className="text-lg font-bold text-green-800 text-center">{headerText}</Text>
               <Text style={{ fontFamily: 'System' }} className="text-sm text-green-600 text-center mt-1">{headerSubText}</Text>
             </View>
-
-            {/* Spacer to keep the text centered */}
-            <View style={{ width: 40 }} /> 
           </View>
         </View>
       </SafeAreaView>
