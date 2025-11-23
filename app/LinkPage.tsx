@@ -1,8 +1,7 @@
 import Global from '@/constants/Global';
-import { linkService } from '../services/linkService';
+import { useLocation } from '@/contexts/LocationContext';
 import { NavigationProp, useNavigation, useRoute } from '@react-navigation/native';
 import {
-  MapPin,
   MoreVertical,
   Plus,
   Search,
@@ -21,6 +20,7 @@ import {
   View,
 } from 'react-native';
 import BottomNavigation from '../components/BottomNavigation';
+import { linkService } from '../services/linkService';
 
 interface User {
   id: number;
@@ -38,6 +38,7 @@ type RootStackParamList = {
 const UsersScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const route = useRoute();
+  const { setSupporterTarget } = useLocation();
   const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
@@ -102,6 +103,7 @@ const UsersScreen: React.FC = () => {
 
   const handleUserClick = (userNumber: string) => {
     Global.TARGET_NUMBER = userNumber;
+    setSupporterTarget(userNumber);
     navigation.navigate('MapPage');
   };
 
@@ -151,8 +153,8 @@ const UsersScreen: React.FC = () => {
             <User size={24} color="#25eb25ff" />
           </View>
           <View className="flex-1">
-            <Text className="font-medium text-gray-900 mb-1">{user.userNumber}</Text>
-            <Text className="text-sm text-gray-600">{user.relation}</Text>
+            <Text className="font-medium text-gray-900 mb-1">{user.relation}</Text>
+            <Text className="text-sm text-gray-600">{user.userNumber}</Text>
           </View>
         </View>
         <TouchableOpacity className="p-2" onPress={() => setShowDropdown(showDropdown === user.userNumber ? null : user.userNumber)}>
@@ -190,7 +192,13 @@ const UsersScreen: React.FC = () => {
         <ScrollView className="flex-1 px-4">
           <View className="flex-row items-center justify-between py-4">
             <Text className="text-2xl font-bold text-gray-900">이용자 관리</Text>
-            
+            <TouchableOpacity
+              className="bg-green-500 rounded-lg px-3 py-2 flex-row items-center"
+              onPress={() => setIsAddUserDialogOpen(true)}
+            >
+              <Plus size={16} color="white" />
+              <Text className="text-white font-medium ml-1">추가</Text>
+            </TouchableOpacity>
           </View>
           <View className="relative mb-6">
             <View className="absolute left-3 top-1/2 transform -translate-y-1/2 z-10">
@@ -227,12 +235,13 @@ const UsersScreen: React.FC = () => {
                 <TextInput className="border border-gray-300 rounded-lg px-4 py-3" placeholder="예: 어머니, 아버지, 할머니" value={newUserRelationship} onChangeText={setNewUserRelationship} />
               </View>
               {error ? <Text className="text-sm text-red-500">{error}</Text> : null}
-              <View className="flex-row space-x-3 mt-6">
-                <TouchableOpacity className="flex-1 bg-gray-200 rounded-lg py-3" onPress={() => setIsAddUserDialogOpen(false)}>
+              <View className="flex-row justify-center mt-6">
+                <TouchableOpacity className="bg-gray-200 rounded-lg py-3 w-28" onPress={() => setIsAddUserDialogOpen(false)}>
                   <Text className="text-center font-medium text-gray-700">취소</Text>
                 </TouchableOpacity>
-                <TouchableOpacity className={`flex-1 rounded-lg py-3 ${newUserCode.length === 6 && !isLoading ? 'bg-blue-600' : 'bg-gray-300'}`} onPress={handleAddUser} disabled={newUserCode.length !== 6 || isLoading}>
-                  <Text className="text-center font-medium text-white">{isLoading ? '연결 중...' : '이용자 추가'}</Text>
+                <View className="w-3" />
+                <TouchableOpacity className={`rounded-lg py-3 w-28 ${newUserCode.length === 6 && !isLoading ? 'bg-blue-600' : 'bg-gray-300'}`} onPress={handleAddUser} disabled={newUserCode.length !== 6 || isLoading}>
+                  <Text className="text-center font-medium text-white">{isLoading ? '연결 중...' : '사용자 추가'}</Text>
                 </TouchableOpacity>
               </View>
             </View>

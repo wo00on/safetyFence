@@ -51,7 +51,7 @@ const TodoModal: React.FC<TodoModalProps> = ({
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('권한 필요', '사진을 선택하려면 카메라 롤 접근 권한이 필요합니다.');
+      Alert.alert('권한 필요', '사진을 선택하려면 갤러리 접근 권한이 필요합니다.');
       return;
     }
 

@@ -1,13 +1,13 @@
 /**
  * WebSocket 실시간 위치 공유 서비스
- * - STOMP over WebSocket (SockJS)
+ * - STOMP over WebSocket (순수 WebSocket)
  * - 위치 전송: /app/location
  * - 위치 구독: /topic/location/{targetUserNumber}
  */
 
 import Global from '@/constants/Global';
 import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
+// import SockJS from 'sockjs-client'; // React Native에서는 순수 WebSocket 사용
 
 export interface LocationData {
   latitude: number;
@@ -47,16 +47,92 @@ class WebSocketService {
     this.connectionCallback = onConnectionChange || null;
 
     try {
-      // SockJS는 HTTP URL을 받아야 함 (내부적으로 WebSocket으로 업그레이드)
-      const wsUrl = Global.URL + '/ws';
+      // HTTP URL을 WebSocket URL로 변환 (http:// → ws://, https:// → wss://)
+      const wsUrl = Global.URL.replace('http://', 'ws://').replace('https://', 'wss://') + '/ws';
       console.log('WebSocket 연결 시도:', wsUrl);
 
-      // SockJS 소켓 생성
-      const socket = new SockJS(wsUrl);
-
-      // STOMP 클라이언트 생성
+      // STOMP 클라이언트 생성 (순수 WebSocket 사용)
       this.client = new Client({
-        webSocketFactory: () => socket as any,
+        webSocketFactory: () => {
+          console.log('[WS DEBUG] 네이티브 WebSocket 생성:', wsUrl);
+          const socket = new WebSocket(wsUrl, ['v12.stomp', 'v11.stomp', 'v10.stomp']);
+          (socket as any).binaryType = 'arraybuffer';
+
+          const originalSend = socket.send.bind(socket);
+
+          const wrapAndSend = (data: any) => {
+            if (typeof data === 'string') {
+              if (data === '\n' || data === '\r\n' || data.length <= 2) {
+                console.log('[WS DEBUG] 네이티브 WebSocket heartbeat LF 전송');
+                return originalSend(data);
+              }
+              const encoder = new TextEncoder();
+              const textBytes = encoder.encode(data);
+              const alreadyTerminated = textBytes.length > 0 && textBytes[textBytes.length - 1] === 0;
+              const bufferLength = alreadyTerminated ? textBytes.length : textBytes.length + 1;
+              const frameBytes = new Uint8Array(bufferLength);
+              frameBytes.set(textBytes);
+              if (!alreadyTerminated) {
+                frameBytes[textBytes.length] = 0;
+              }
+              return originalSend(frameBytes.buffer);
+            }
+
+            if (data instanceof ArrayBuffer) {
+              const view = new Uint8Array(data);
+              console.log('[WS DEBUG] 네이티브 WebSocket send binary bytes', Array.from(view.slice(0, 120)));
+              return originalSend(view.buffer);
+            }
+
+            if (ArrayBuffer.isView(data)) {
+              const view = data instanceof Uint8Array ? data : new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+              console.log('[WS DEBUG] 네이티브 WebSocket send arraybuffer view bytes', Array.from(view.slice(0, 120)));
+              return originalSend(view.buffer);
+            }
+
+            return originalSend(data);
+          };
+
+          (socket as any).send = (data: any) => wrapAndSend(data);
+
+          const attachListener = (eventName: string, handler: (...args: any[]) => void) => {
+            if (typeof (socket as any).addEventListener === 'function') {
+              (socket as any).addEventListener(eventName, handler);
+            } else {
+              const prop = `on${eventName}` as keyof WebSocket;
+              const originalHandler = (socket as any)[prop];
+              (socket as any)[prop] = (...args: any[]) => {
+                handler(...args);
+                if (typeof originalHandler === 'function') {
+                  originalHandler(...args);
+                }
+              };
+            }
+          };
+
+          attachListener('open', () => {
+            console.log('[WS DEBUG] 네이티브 WebSocket open');
+          });
+
+          attachListener('close', (event: any) => {
+            console.log('[WS DEBUG] 네이티브 WebSocket close', {
+              code: event?.code,
+              reason: event?.reason,
+              wasClean: event?.wasClean,
+            });
+          });
+
+          attachListener('error', (event: any) => {
+            console.log('[WS DEBUG] 네이티브 WebSocket error', event);
+          });
+
+          attachListener('message', (event: any) => {
+            const payloadPreview = typeof event?.data === 'string' ? event.data.slice(0, 120) : '[binary]';
+            console.log('[WS DEBUG] 네이티브 WebSocket message 수신', payloadPreview);
+          });
+
+          return socket;
+        },
         connectHeaders: {
           userNumber: userNumber,
         },
@@ -92,6 +168,22 @@ class WebSocketService {
         onWebSocketError: (event) => {
           console.error('❌ WebSocket 에러:', event);
           this.connectionCallback?.(false);
+        },
+        onWebSocketClose: (event) => {
+          console.error('🔌 WebSocket close 이벤트 발생', {
+            code: event.code,
+            reason: event.reason,
+            wasClean: event.wasClean,
+          });
+        },
+        onUnhandledMessage: (message) => {
+          console.log('📨 처리되지 않은 STOMP MESSAGE', message);
+        },
+        onUnhandledFrame: (frame) => {
+          console.log('📨 처리되지 않은 STOMP FRAME', frame);
+        },
+        onUnhandledReceipt: (frame) => {
+          console.log('📨 처리되지 않은 STOMP RECEIPT', frame);
         },
       });
 

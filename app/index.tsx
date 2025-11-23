@@ -1,6 +1,7 @@
 import '../src/tasks/locationTask';
 import Global from '@/constants/Global';
 import { authService } from '../services/authService';
+import { useLocation } from '@/contexts/LocationContext';
 import { storage } from '../utils/storage';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
@@ -23,6 +24,7 @@ import {
 
 const LoginPage: React.FC = () => {
   const navigation = useNavigation();
+  const { startTracking, connectWebSocket, disconnectWebSocket } = useLocation();
   const [number, setNumber] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -51,7 +53,8 @@ const LoginPage: React.FC = () => {
       // AsyncStorage에 로그인 정보 저장
       await storage.setLoginInfo(response.apiKey, response.number, response.name);
 
-      // 역할 선택 페이지로 이동
+      // 기존 연결이 있다면 정리하고 역할 선택 화면으로 이동
+      disconnectWebSocket();
       navigation.navigate('SelectRole' as never);
     } catch (error: any) {
       const message = error.response?.data?.message || '로그인에 실패했습니다. 다시 시도해주세요.';

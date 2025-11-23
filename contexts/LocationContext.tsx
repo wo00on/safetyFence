@@ -7,7 +7,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import * as Location from 'expo-location';
-import { AppState, AppStateStatus } from 'react-native';
+import { Alert, AppState, AppStateStatus, Linking } from 'react-native';
 import { Accelerometer } from 'expo-sensors';
 import { websocketService } from '../services/websocketService';
 import { startBackgroundLocationTracking, stopBackgroundLocationTracking } from '../services/backgroundLocationService';
@@ -43,6 +43,7 @@ interface LocationContextState {
   stopTracking: () => Promise<void>;
   connectWebSocket: () => void;
   disconnectWebSocket: () => void;
+  setSupporterTarget: (targetNumber: string) => void;
 }
 
 // Context 생성
@@ -67,6 +68,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const stopTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const accelerometerSubscription = useRef<{ remove: () => void } | null>(null);
+  const supporterTargetRef = useRef<string | null>(null);
 
   /**
    * 위치 추적 시작
@@ -74,6 +76,20 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
   const startTracking = async () => {
     try {
       setIsLoading(true);
+
+      if (!Global.NUMBER) {
+        const loginRequiredMessage = '로그인 후 위치 추적을 시작할 수 있습니다.';
+        console.warn('⚠️ 사용자 번호가 없어 위치 추적을 시작할 수 없음');
+        setError(loginRequiredMessage);
+        setIsLoading(false);
+        return;
+      }
+
+      if (isTracking) {
+        console.log('ℹ️ 이미 위치 추적 중');
+        setIsLoading(false);
+        return;
+      }
 
       // 권한 확인 및 요청
       let { status } = await Location.getForegroundPermissionsAsync();
@@ -90,6 +106,28 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
         setError('지도 표시를 위해 위치 권한이 필요합니다. 설정에서 권한을 허용해주세요.');
         setIsLoading(false);
         return;
+      }
+
+      // 백그라운드 권한 확인 (이용자만)
+      if (Global.USER_ROLE === 'user') {
+        let { status: backgroundStatus } = await Location.getBackgroundPermissionsAsync();
+        if (backgroundStatus !== 'granted') {
+          const requestResult = await Location.requestBackgroundPermissionsAsync();
+          backgroundStatus = requestResult.status;
+        }
+
+        if (backgroundStatus !== 'granted') {
+          Alert.alert(
+            '백그라운드 권한 필요',
+            '백그라운드에서도 안전하게 위치를 전송하려면 설정에서 "위치 → 항상 허용"으로 변경해 주세요.',
+            [
+              { text: '나중에', style: 'cancel' },
+              { text: '설정 열기', onPress: () => Linking.openSettings() },
+            ],
+            { cancelable: true }
+          );
+          console.warn('⚠️ 백그라운드 권한이 없어 포그라운드에서만 위치 전송 가능');
+        }
       }
 
       // 초기 위치 가져오기
@@ -113,7 +151,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
       const subscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.High,
-          timeInterval: 5000, // 5초마다 업데이트
+          timeInterval: 2000, // 2초마다 업데이트
           distanceInterval: 10, // 10미터 이동 시 업데이트
         },
         (newLocation) => {
@@ -227,6 +265,27 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
     accelerometerSubscription.current = subscription;
   };
 
+  const subscribeToSupporterTarget = (targetNumber: string) => {
+    websocketService.subscribeToUserLocation(targetNumber, (locationData) => {
+      console.log('📍 이용자 위치 업데이트:', locationData);
+      setTargetLocation({
+        latitude: locationData.latitude,
+        longitude: locationData.longitude,
+        accuracy: 0,
+        timestamp: locationData.timestamp || Date.now(),
+      });
+    });
+  };
+
+  const clearSupporterTarget = () => {
+    if (supporterTargetRef.current) {
+      websocketService.unsubscribeFromUserLocation(supporterTargetRef.current);
+      supporterTargetRef.current = null;
+    }
+    Global.TARGET_NUMBER = '';
+    setTargetLocation(null);
+  };
+
   /**
    * WebSocket 연결
    */
@@ -243,17 +302,9 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
         console.log('✅ WebSocket 연결됨');
 
         // 보호자인 경우 이용자 위치 구독
-        if (Global.USER_ROLE === 'supporter' && Global.TARGET_NUMBER) {
-          console.log(`👥 보호자 모드: ${Global.TARGET_NUMBER}의 위치 구독 시작`);
-          websocketService.subscribeToUserLocation(Global.TARGET_NUMBER, (locationData) => {
-            console.log('📍 이용자 위치 업데이트:', locationData);
-            setTargetLocation({
-              latitude: locationData.latitude,
-              longitude: locationData.longitude,
-              accuracy: 0,
-              timestamp: locationData.timestamp || Date.now(),
-            });
-          });
+        if (Global.USER_ROLE === 'supporter' && supporterTargetRef.current) {
+          console.log(`👥 보호자 모드: ${supporterTargetRef.current}의 위치 구독 시작`);
+          subscribeToSupporterTarget(supporterTargetRef.current);
         }
       } else {
         console.log('❌ WebSocket 연결 실패');
@@ -266,8 +317,31 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
    */
   const disconnectWebSocket = () => {
     console.log('🔌 WebSocket 연결 해제');
+    clearSupporterTarget();
     websocketService.disconnect();
     setIsWebSocketConnected(false);
+  };
+
+  const setSupporterTarget = (targetNumber: string) => {
+    if (Global.USER_ROLE !== 'supporter') {
+      console.warn('⚠️ 보호자 역할이 아니어서 이용자 구독을 설정할 수 없음');
+      return;
+    }
+    if (supporterTargetRef.current === targetNumber) {
+      return;
+    }
+    if (supporterTargetRef.current) {
+      websocketService.unsubscribeFromUserLocation(supporterTargetRef.current);
+    }
+    supporterTargetRef.current = targetNumber;
+    Global.TARGET_NUMBER = targetNumber;
+    setTargetLocation(null);
+    if (isWebSocketConnected) {
+      console.log(`👥 보호자 모드: ${targetNumber}의 위치 구독 시작`);
+      subscribeToSupporterTarget(targetNumber);
+    } else {
+      connectWebSocket();
+    }
   };
 
   /**
@@ -278,7 +352,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
     if (!currentLocation || !isTracking) return;
     if (!isWebSocketConnected) return;
 
-    // 15초마다 위치 전송
+    // 2초마다 위치 전송 (실시간 위치 공유)
     if (websocketSendInterval.current) {
       clearInterval(websocketSendInterval.current);
     }
@@ -293,14 +367,14 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
 
     websocketSendInterval.current = setInterval(() => {
       if (currentLocation && isWebSocketConnected) {
-        console.log('📡 포그라운드: WebSocket으로 위치 전송 (15초 주기)');
+        console.log('📡 포그라운드: WebSocket으로 위치 전송 (2초 주기)');
         websocketService.sendLocation({
           latitude: currentLocation.latitude,
           longitude: currentLocation.longitude,
           timestamp: currentLocation.timestamp,
         });
       }
-    }, 15000);
+    }, 2000);
 
     return () => {
       if (websocketSendInterval.current) {
@@ -368,6 +442,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
     stopTracking,
     connectWebSocket,
     disconnectWebSocket,
+    setSupporterTarget,
   };
 
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;

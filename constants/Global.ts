@@ -6,8 +6,8 @@
  * - USER_ROLE: 사용자 역할 (user | supporter)
  */
 const Global = {
-  // API 서버 URL (로컬 네트워크 IP - 같은 WiFi에서만 접속 가능)
-  URL: 'http://54.116.21.196:8080',
+  // API 서버 URL - Nginx 리버스 프록시를 통한 접속 (포트 80)
+  URL: 'http://54.116.21.196',
 
   // 사용자 정보
   NUMBER: "",

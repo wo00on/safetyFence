@@ -2,17 +2,15 @@ import { Stack } from "expo-router";
 import { useEffect } from "react";
 import { storage } from "../utils/storage";
 import Global from "../constants/Global";
-import { LocationProvider, useLocation } from "../contexts/LocationContext";
+import { LocationProvider } from "../contexts/LocationContext";
 import "../global.css";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 /**
  * 앱 초기화 컴포넌트
- * 로그인 상태 복원 후 위치 추적 및 WebSocket 시작
+ * 로그인 상태 복원 (실제 추적/웹소켓 시작은 로그인 성공 시 처리)
  */
 function AppInitializer() {
-  const { startTracking, connectWebSocket } = useLocation();
-
   useEffect(() => {
     const restoreLoginState = async () => {
       try {
@@ -35,10 +33,7 @@ function AppInitializer() {
           }
           console.log('✅ 로그인 상태 복원 성공:', { userNumber, userName, userRole, targetNumber });
 
-          // 로그인되어 있으면 자동으로 위치 추적 및 WebSocket 시작
-          console.log('🚀 자동 위치 추적 및 WebSocket 연결 시작');
-          await startTracking();
-          connectWebSocket();
+          // 로그인되어 있으면 Global 상태만 복원 (위치 추적/웹소켓은 로그인 성공 시 시작)
         } else {
           console.log('ℹ️ 저장된 로그인 정보 없음');
         }
@@ -74,4 +69,3 @@ export default function RootLayout() {
 }
 
 // HEADER, FOOTER 기본 설정을 하는 곳
-
