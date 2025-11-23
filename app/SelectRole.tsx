@@ -1,4 +1,5 @@
 import Global from '@/constants/Global';
+import { useLocation } from '@/contexts/LocationContext';
 import { useRouter } from 'expo-router';
 import { ArrowRight, User, Users } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -16,6 +17,7 @@ type UserRole = 'user' | 'supporter' | null;
 export default function SelectRolePage() {
   const router = useRouter();
   const [selectedRole, setSelectedRole] = useState<UserRole>(null);
+  const { startTracking, stopTracking, connectWebSocket, disconnectWebSocket } = useLocation();
 
   const handleRoleSelect = (role: 'user' | 'supporter') => {
     setSelectedRole(role);
@@ -30,10 +32,13 @@ export default function SelectRolePage() {
         await AsyncStorage.setItem('userRole', selectedRole); // Save to AsyncStorage
 
         if (Global.USER_ROLE === 'user') {
+          await startTracking();
+          disconnectWebSocket();
+          connectWebSocket();
           router.push(`/MapPage`);
-        } 
-        
-        if (Global.USER_ROLE === 'supporter') {
+        } else if (Global.USER_ROLE === 'supporter') {
+          await stopTracking();
+          disconnectWebSocket();
           router.push(`/LinkPage`);
         }
 

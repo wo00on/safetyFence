@@ -321,6 +321,25 @@ const MainPage: React.FC = () => {
 
   const userLocation = getCurrentDisplayLocation();
 
+  const getLocationFreshnessMessage = () => {
+    const location = userRole === 'supporter' ? targetLocation : currentLocation;
+    if (!location?.timestamp) return null;
+
+    const now = Date.now();
+    const diffMs = now - location.timestamp;
+    if (diffMs < 0) return null;
+
+    const diffMinutes = Math.floor(diffMs / 60000);
+
+    if (diffMinutes <= 10) {
+      return '사용자의 현 위치입니다.';
+    }
+
+    return `마지막으로 확인된 위치: 약 ${diffMinutes}분 전`;
+  };
+
+  const locationFreshnessMessage = getLocationFreshnessMessage();
+
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 justify-center items-center bg-green-50">
@@ -450,15 +469,19 @@ const MainPage: React.FC = () => {
   ); // renderMapView 닫는 괄호
 
   const headerText = userRole === 'user' ? '내 위치' : '이용자 위치';
-  const headerSubText = userRole === 'user'
+  const baseHeaderSubText = userRole === 'user'
     ? (isTracking
         ? `GPS 데이터 수집 중${isWebSocketConnected ? ' • 서버 연결됨' : ' • 서버 연결 안됨'}`
         : 'GPS 미작동 중')
     : (isWebSocketConnected && targetLocation
-        ? '선택한 이용자의 위치를 실시간 표시합니다.'
+        ? '선택한 이용자의 위치를 표시합니다.'
         : isWebSocketConnected
           ? '이용자 위치 대기 중...'
           : '서버 연결 안됨');
+
+  const headerSubText = locationFreshnessMessage
+    ? `${baseHeaderSubText}\n${locationFreshnessMessage}`
+    : baseHeaderSubText;
 
   return (
     <SafeAreaView className="flex-1 bg-green-50">
