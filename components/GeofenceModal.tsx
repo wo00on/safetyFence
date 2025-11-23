@@ -1,14 +1,16 @@
-import { ChevronDown, ChevronUp, Clock, MapPin } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, Clock, MapPin, Calendar } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   Alert,
   Modal,
+  Platform,
   SafeAreaView,
   Text,
   TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import DaumPostcode, { DaumPostcodeData } from '../utils/DaumPostcode';
 
 interface GeofenceData {
@@ -47,10 +49,24 @@ const GeofenceModal: React.FC<GeofenceModalProps> = ({
   const [isAddressModalVisible, setIsAddressModalVisible] = useState(false);
   const [detailAddress, setDetailAddress] = useState('');
 
+  const [startDate, setStartDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState<'start' | 'end' | null>(null);
+
   const [startHours, setStartHours] = useState('09');
   const [startMinutes, setStartMinutes] = useState('00');
   const [endHours, setEndHours] = useState('18');
   const [endMinutes, setEndMinutes] = useState('00');
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    const currentDate = selectedDate || (showDatePicker === 'start' ? startDate : endDate);
+    setShowDatePicker(null);
+    if (showDatePicker === 'start') {
+      setStartDate(currentDate);
+    } else if (showDatePicker === 'end') {
+      setEndDate(currentDate);
+    }
+  };
 
   const handleSave = () => {
     if (!formData.name.trim()) {
@@ -72,14 +88,21 @@ const GeofenceModal: React.FC<GeofenceModalProps> = ({
       ? `${formData.address} ${detailAddress}`
       : formData.address;
 
-    // 시간 설정 반영
-    const startTime = formData.startTime ? new Date(formData.startTime) : new Date();
-    startTime.setHours(parseInt(startHours));
-    startTime.setMinutes(parseInt(startMinutes));
+    const startTime = new Date(
+      startDate.getFullYear(),
+      startDate.getMonth(),
+      startDate.getDate(),
+      parseInt(startHours),
+      parseInt(startMinutes)
+    );
 
-    const endTime = formData.endTime ? new Date(formData.endTime) : new Date();
-    endTime.setHours(parseInt(endHours));
-    endTime.setMinutes(parseInt(endMinutes));
+    const endTime = new Date(
+      endDate.getFullYear(),
+      endDate.getMonth(),
+      endDate.getDate(),
+      parseInt(endHours),
+      parseInt(endMinutes)
+    );
 
     onSave({
       ...formData,
@@ -333,7 +356,40 @@ const GeofenceModal: React.FC<GeofenceModalProps> = ({
             {/* 시간 설정 (일시적 영역일 때만) */}
             {formData.type === 'temporary' && (
               <View className="mb-6">
-                <Text className="text-sm font-medium text-gray-700 mb-3">시간 추가 (필수)</Text>
+                <Text className="text-sm font-medium text-gray-700 mb-3">시간 및 날짜 추가 (필수)</Text>
+
+                {/* 시작 날짜 */}
+                <View className="mb-4">
+                  <Text className="text-sm text-gray-600 mb-2">시작 날짜</Text>
+                  <TouchableOpacity
+                    className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3"
+                    onPress={() => setShowDatePicker('start')}
+                  >
+                    <Calendar size={20} color="#6b7280" />
+                    <Text className="ml-3 text-gray-900">{startDate.toLocaleDateString()}</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* 종료 날짜 */}
+                <View className="mb-4">
+                  <Text className="text-sm text-gray-600 mb-2">종료 날짜</Text>
+                  <TouchableOpacity
+                    className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3"
+                    onPress={() => setShowDatePicker('end')}
+                  >
+                    <Calendar size={20} color="#6b7280" />
+                    <Text className="ml-3 text-gray-900">{endDate.toLocaleDateString()}</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={showDatePicker === 'start' ? startDate : endDate}
+                    mode="date"
+                    display="default"
+                    onChange={onDateChange}
+                  />
+                )}
                 
                 {/* 시작 시간 */}
                 <View className="mb-4">

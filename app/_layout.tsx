@@ -4,6 +4,7 @@ import { storage } from "../utils/storage";
 import Global from "../constants/Global";
 import { LocationProvider } from "../contexts/LocationContext";
 import "../global.css";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 /**
  * 앱 초기화 컴포넌트
@@ -49,19 +50,21 @@ function AppInitializer() {
 
 export default function RootLayout() {
   return (
-    <LocationProvider>
-      <AppInitializer />
-      <Stack>
-        <Stack.Screen name="index" options={{ headerShown: false }} /> {/* Login Page */}
-        <Stack.Screen name="SelectRole" options={{ headerShown: false }} />
-        <Stack.Screen name="MapPage" options={{ headerShown: false }} />
-        <Stack.Screen name="CalendarPage" options={{ headerShown: false }} />
-        <Stack.Screen name="MyPage" options={{ headerShown: false }} />
-        <Stack.Screen name="LinkPage" options={{ headerShown: false }} />
-        <Stack.Screen name="LogPage" options={{ headerShown: false }} />
-        <Stack.Screen name="Signup" options={{ headerShown: false }} />
-      </Stack>
-    </LocationProvider>
+    <SafeAreaProvider>
+      <LocationProvider>
+        <AppInitializer />
+        <Stack>
+          <Stack.Screen name="index" options={{ headerShown: false }} /> {/* Login Page */}
+          <Stack.Screen name="SelectRole" options={{ headerShown: false }} />
+          <Stack.Screen name="MapPage" options={{ headerShown: false }} />
+          <Stack.Screen name="CalendarPage" options={{ headerShown: false }} />
+          <Stack.Screen name="MyPage" options={{ headerShown: false }} />
+          <Stack.Screen name="LinkPage" options={{ headerShown: false }} />
+          <Stack.Screen name="LogPage" options={{ headerShown: false }} />
+          <Stack.Screen name="Signup" options={{ headerShown: false }} />
+        </Stack>
+      </LocationProvider>
+    </SafeAreaProvider>
   );
 }
 
