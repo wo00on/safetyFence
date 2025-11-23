@@ -91,15 +91,30 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
         return;
       }
 
-      // 권한 확인 및 요청
-      let { status } = await Location.getForegroundPermissionsAsync();
-      console.log('📍 초기 권한 상태:', status);
+      // 권한 확인 및 요청 (iOS 안전 처리)
+      let status: string = 'undetermined';
+
+      try {
+        const permissionResult = await Location.getForegroundPermissionsAsync();
+        status = permissionResult.status;
+        console.log('📍 초기 권한 상태:', status);
+      } catch (permError) {
+        console.error('📍 권한 확인 실패:', permError);
+        // iOS에서 권한 확인 실패 시 바로 요청 시도
+      }
 
       if (status !== 'granted') {
         console.log('📍 권한 요청 중...');
-        const result = await Location.requestForegroundPermissionsAsync();
-        status = result.status;
-        console.log('📍 권한 요청 결과:', status);
+        try {
+          const result = await Location.requestForegroundPermissionsAsync();
+          status = result.status;
+          console.log('📍 권한 요청 결과:', status);
+        } catch (reqError) {
+          console.error('📍 권한 요청 실패:', reqError);
+          setError('위치 권한을 요청할 수 없습니다. 설정에서 직접 권한을 허용해주세요.');
+          setIsLoading(false);
+          return;
+        }
       }
 
       if (status !== 'granted') {
@@ -110,40 +125,48 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
 
       // 백그라운드 권한 확인 (이용자만)
       if (Global.USER_ROLE === 'user') {
-        let { status: backgroundStatus } = await Location.getBackgroundPermissionsAsync();
-        if (backgroundStatus !== 'granted') {
-          const requestResult = await Location.requestBackgroundPermissionsAsync();
-          backgroundStatus = requestResult.status;
-        }
+        try {
+          let { status: backgroundStatus } = await Location.getBackgroundPermissionsAsync();
+          if (backgroundStatus !== 'granted') {
+            const requestResult = await Location.requestBackgroundPermissionsAsync();
+            backgroundStatus = requestResult.status;
+          }
 
-        if (backgroundStatus !== 'granted') {
-          Alert.alert(
-            '백그라운드 권한 필요',
-            '백그라운드에서도 안전하게 위치를 전송하려면 설정에서 "위치 → 항상 허용"으로 변경해 주세요.',
-            [
-              { text: '나중에', style: 'cancel' },
-              { text: '설정 열기', onPress: () => Linking.openSettings() },
-            ],
-            { cancelable: true }
-          );
-          console.warn('⚠️ 백그라운드 권한이 없어 포그라운드에서만 위치 전송 가능');
+          if (backgroundStatus !== 'granted') {
+            Alert.alert(
+              '백그라운드 권한 필요',
+              '백그라운드에서도 안전하게 위치를 전송하려면 설정에서 "위치 → 항상 허용"으로 변경해 주세요.',
+              [
+                { text: '나중에', style: 'cancel' },
+                { text: '설정 열기', onPress: () => Linking.openSettings() },
+              ],
+              { cancelable: true }
+            );
+            console.warn('⚠️ 백그라운드 권한이 없어 포그라운드에서만 위치 전송 가능');
+          }
+        } catch (bgError) {
+          console.warn('⚠️ 백그라운드 권한 요청 실패 (Expo Go 제한):', bgError);
         }
       }
 
-      // 초기 위치 가져오기
-      const initialLocation = await Location.getLastKnownPositionAsync();
-      if (initialLocation) {
-        const realTimeLocation: RealTimeLocation = {
-          latitude: initialLocation.coords.latitude,
-          longitude: initialLocation.coords.longitude,
-          accuracy: initialLocation.coords.accuracy || 0,
-          timestamp: initialLocation.timestamp,
-          speed: initialLocation.coords.speed || undefined,
-          heading: initialLocation.coords.heading || undefined,
-        };
-        setCurrentLocation(realTimeLocation);
-        setLocationHistory([realTimeLocation]);
-        console.log('📍 초기 위치 설정:', realTimeLocation);
+      // 초기 위치 가져오기 (실패해도 계속 진행)
+      try {
+        const initialLocation = await Location.getLastKnownPositionAsync();
+        if (initialLocation) {
+          const realTimeLocation: RealTimeLocation = {
+            latitude: initialLocation.coords.latitude,
+            longitude: initialLocation.coords.longitude,
+            accuracy: initialLocation.coords.accuracy || 0,
+            timestamp: initialLocation.timestamp,
+            speed: initialLocation.coords.speed || undefined,
+            heading: initialLocation.coords.heading || undefined,
+          };
+          setCurrentLocation(realTimeLocation);
+          setLocationHistory([realTimeLocation]);
+          console.log('📍 초기 위치 설정:', realTimeLocation);
+        }
+      } catch (lastKnownError) {
+        console.warn('📍 마지막 위치 가져오기 실패, 실시간 추적으로 진행:', lastKnownError);
       }
 
       // 실시간 위치 추적 시작
@@ -175,18 +198,22 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
       setError(null);
       setIsLoading(false);
 
-      // 백그라운드 위치 추적 시작 (이용자만)
+      // 백그라운드 위치 추적 시작 (이용자만, Expo Go에서는 실패할 수 있음)
       if (Global.USER_ROLE === 'user') {
-        const backgroundStarted = await startBackgroundLocationTracking();
-        if (backgroundStarted) {
-          console.log('✅ 백그라운드 위치 추적 시작 완료');
-        } else {
-          console.warn('⚠️ 백그라운드 위치 추적 시작 실패 (포그라운드 추적은 작동 중)');
-        }
+        try {
+          const backgroundStarted = await startBackgroundLocationTracking();
+          if (backgroundStarted) {
+            console.log('✅ 백그라운드 위치 추적 시작 완료');
+          } else {
+            console.warn('⚠️ 백그라운드 위치 추적 시작 실패 (포그라운드 추적은 작동 중)');
+          }
 
-        // 움직임 감지 시작 (배터리 최적화)
-        setupMovementDetection();
-        console.log('✅ 배터리 최적화: 움직임 감지 시작');
+          // 움직임 감지 시작 (배터리 최적화)
+          setupMovementDetection();
+          console.log('✅ 배터리 최적화: 움직임 감지 시작');
+        } catch (bgTrackError) {
+          console.warn('⚠️ 백그라운드 추적 설정 실패 (Expo Go 제한):', bgTrackError);
+        }
       }
 
       console.log('✅ 위치 추적 시작 완료');
