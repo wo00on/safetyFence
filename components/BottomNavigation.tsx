@@ -53,7 +53,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
 
   if (Global.USER_ROLE === 'user') {
     return (
-      <View className="absolute bottom-4 left-4 right-4 bg-white/95 border border-green-500/80 p-1 pb-3 rounded-2xl shadow-lg" style={{ paddingBottom: insets.bottom > 0 ? insets.bottom : 12 }}>
+      <View className="absolute left-4 right-4 bg-white/95 border border-green-500/80 p-1 pb-3 rounded-2xl shadow-lg" style={{ bottom: Math.max(insets.bottom, 16) }}>
         <View className="flex-row justify-evenly w-full">
           {/* --- 지도 --- */}
           <TouchableOpacity
@@ -95,7 +95,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
   if (Global.USER_ROLE === 'supporter') {
     // 보호자용 네비게이션 (4개 메뉴)
     return (
-      <View className="absolute bottom-4 left-4 right-4 bg-white/95 border border-green-500/80 p-1 pb-3 rounded-2xl shadow-lg" style={{ paddingBottom: insets.bottom > 0 ? insets.bottom : 12 }}>
+      <View className="absolute left-4 right-4 bg-white/95 border border-green-500/80 p-1 pb-3 rounded-2xl shadow-lg" style={{ bottom: Math.max(insets.bottom, 16) }}>
         <View className="flex-row justify-evenly w-full">
           {/* --- 지도 --- */}
           <TouchableOpacity
