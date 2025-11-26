@@ -260,8 +260,8 @@ const MyPage: React.FC = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50 pt-safe">
-      <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }}>
-        <View className="w-full max-w-2xl mx-auto space-y-8 pb-16">
+      <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        <View className="w-full max-w-2xl mx-auto space-y-8">
           {/* 헤더 */}
           <View className="flex-row items-center justify-center py-4">
             <Text className="text-2xl font-bold text-gray-900">마이페이지</Text>
