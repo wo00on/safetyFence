@@ -5,6 +5,7 @@ import {
   Modal,
   Platform,
   SafeAreaView,
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
@@ -271,7 +272,7 @@ const GeofenceModal: React.FC<GeofenceModalProps> = ({
       onRequestClose={onClose}
     >
       <SafeAreaView className="flex-1 bg-black/50 justify-center items-center">
-        <View className="bg-white rounded-2xl w-11/12 max-w-md">
+        <View className="bg-white rounded-2xl w-11/12 max-w-md" style={{ maxHeight: '85%' }}>
           {/* 헤더 */}
           <View className="flex-row items-center justify-between p-6 border-b border-gray-200">
             <Text className="text-xl font-bold text-green-900">안전구역 추가</Text>
@@ -280,169 +281,171 @@ const GeofenceModal: React.FC<GeofenceModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          <View className="p-6">
-            {/* 위치 이름 */}
-            <View className="mb-6">
-              <Text className="text-sm font-medium text-gray-700 mb-2">위치 이름</Text>
-              <TextInput
-                className="border border-green-300 rounded-lg px-4 py-3 text-gray-900"
-                placeholder="예) 병원, 경로당"
-                value={formData.name}
-                onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
-                placeholderTextColor="#9ca3af"
-              />
-            </View>
-
-            {/* 주소 영역 */}
-            <View className="mb-6">
-              <Text className="text-sm font-medium text-gray-700 mb-2">주소</Text>
-              <TouchableOpacity
-                className="flex-row items-center border border-green-300 rounded-lg px-4 py-3 mb-2"
-                onPress={() => setIsAddressModalVisible(true)}
-              >
-                <MapPin size={20} color="#6b7280" />
-                <Text className="ml-3 text-gray-900">
-                  {formData.address || "주소 검색하기"}
-                </Text>
-              </TouchableOpacity>
-              
-              {formData.address && (
+          <ScrollView>
+            <View className="p-6">
+              {/* 위치 이름 */}
+              <View className="mb-6">
+                <Text className="text-sm font-medium text-gray-700 mb-2">위치 이름</Text>
                 <TextInput
-                  className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900"
-                  placeholder="상세 주소를 입력하세요"
-                  value={detailAddress}
-                  onChangeText={setDetailAddress}
+                  className="border border-green-300 rounded-lg px-4 py-3 text-gray-900"
+                  placeholder="예) 병원, 경로당"
+                  value={formData.name}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
                   placeholderTextColor="#9ca3af"
                 />
-              )}
-            </View>
-
-            {/* 영역 특성 */}
-            <View className="mb-6">
-              <Text className="text-sm font-medium text-gray-700 mb-3">특성</Text>
-              <View className="flex-row space-x-4">
-                <TouchableOpacity
-                  className={`flex-1 py-3 px-4 rounded-lg ${
-                    formData.type === 'permanent'
-                      ? 'bg-green-500'
-                      : 'bg-gray-200'
-                  }`}
-                  onPress={() => setFormData(prev => ({ ...prev, type: 'permanent' }))}
-                >
-                  <Text className={`text-center font-medium ${
-                    formData.type === 'permanent' ? 'text-white' : 'text-gray-600'
-                  }`}>
-                    영구
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  className={`flex-1 py-3 px-4 rounded-lg ${
-                    formData.type === 'temporary'
-                      ? 'bg-green-600'
-                      : 'bg-gray-200'
-                  }`}
-                  onPress={() => setFormData(prev => ({ ...prev, type: 'temporary' }))}
-                >
-                  <Text className={`text-center font-medium ${
-                    formData.type === 'temporary' ? 'text-white' : 'text-gray-600'
-                  }`}>
-                    일시적
-                  </Text>
-                </TouchableOpacity>
               </View>
-            </View>
 
-            {/* 시간 설정 (일시적 영역일 때만) */}
-            {formData.type === 'temporary' && (
+              {/* 주소 영역 */}
               <View className="mb-6">
-                <Text className="text-sm font-medium text-gray-700 mb-3">시간 및 날짜 추가 (필수)</Text>
-
-                {/* 시작 날짜 */}
-                <View className="mb-4">
-                  <Text className="text-sm text-gray-600 mb-2">시작 날짜</Text>
-                  <TouchableOpacity
-                    className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3"
-                    onPress={() => setShowDatePicker('start')}
-                  >
-                    <Calendar size={20} color="#6b7280" />
-                    <Text className="ml-3 text-gray-900">{startDate.toLocaleDateString()}</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* 종료 날짜 */}
-                <View className="mb-4">
-                  <Text className="text-sm text-gray-600 mb-2">종료 날짜</Text>
-                  <TouchableOpacity
-                    className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3"
-                    onPress={() => setShowDatePicker('end')}
-                  >
-                    <Calendar size={20} color="#6b7280" />
-                    <Text className="ml-3 text-gray-900">{endDate.toLocaleDateString()}</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {showDatePicker && (
-                  <DateTimePicker
-                    value={showDatePicker === 'start' ? startDate : endDate}
-                    mode="date"
-                    display="default"
-                    onChange={onDateChange}
+                <Text className="text-sm font-medium text-gray-700 mb-2">주소</Text>
+                <TouchableOpacity
+                  className="flex-row items-center border border-green-300 rounded-lg px-4 py-3 mb-2"
+                  onPress={() => setIsAddressModalVisible(true)}
+                >
+                  <MapPin size={20} color="#6b7280" />
+                  <Text className="ml-3 text-gray-900">
+                    {formData.address || "주소 검색하기"}
+                  </Text>
+                </TouchableOpacity>
+                
+                {formData.address && (
+                  <TextInput
+                    className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900"
+                    placeholder="상세 주소를 입력하세요"
+                    value={detailAddress}
+                    onChangeText={setDetailAddress}
+                    placeholderTextColor="#9ca3af"
                   />
                 )}
-                
-                {/* 시작 시간 */}
-                <View className="mb-4">
-                  <Text className="text-sm text-gray-600 mb-2">시작 시간</Text>
-                  {!showStartTimePicker ? (
-                    <TouchableOpacity
-                      className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3"
-                      onPress={() => openTimePicker('start')}
-                    >
-                      <Clock size={20} color="#6b7280" />
-                      <Text className="ml-3 text-gray-900">{startHours}:{startMinutes}</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TimePickerUI 
-                      type="start"
-                      hours={startHours}
-                      minutes={startMinutes}
-                      onClose={() => setShowStartTimePicker(false)}
-                    />
-                  )}
-                </View>
+              </View>
 
-                {/* 종료 시간 */}
-                <View className="mb-4">
-                  <Text className="text-sm text-gray-600 mb-2">끝나는 시간</Text>
-                  {!showEndTimePicker ? (
-                    <TouchableOpacity
-                      className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3"
-                      onPress={() => openTimePicker('end')}
-                    >
-                      <Clock size={20} color="#6b7280" />
-                      <Text className="ml-3 text-gray-900">{endHours}:{endMinutes}</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TimePickerUI 
-                      type="end"
-                      hours={endHours}
-                      minutes={endMinutes}
-                      onClose={() => setShowEndTimePicker(false)}
-                    />
-                  )}
+              {/* 영역 특성 */}
+              <View className="mb-6">
+                <Text className="text-sm font-medium text-gray-700 mb-3">특성</Text>
+                <View className="flex-row space-x-4">
+                  <TouchableOpacity
+                    className={`flex-1 py-3 px-4 rounded-lg ${
+                      formData.type === 'permanent'
+                        ? 'bg-green-500'
+                        : 'bg-gray-200'
+                    }`}
+                    onPress={() => setFormData(prev => ({ ...prev, type: 'permanent' }))}
+                  >
+                    <Text className={`text-center font-medium ${
+                      formData.type === 'permanent' ? 'text-white' : 'text-gray-600'
+                    }`}>
+                      영구
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    className={`flex-1 py-3 px-4 rounded-lg ${
+                      formData.type === 'temporary'
+                        ? 'bg-green-600'
+                        : 'bg-gray-200'
+                    }`}
+                    onPress={() => setFormData(prev => ({ ...prev, type: 'temporary' }))}
+                  >
+                    <Text className={`text-center font-medium ${
+                      formData.type === 'temporary' ? 'text-white' : 'text-gray-600'
+                    }`}>
+                      일시적
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </View>
-            )}
 
-            {/* 추가하기 버튼 */}
-            <TouchableOpacity
-              className="bg-green-500 py-4 rounded-lg"
-              onPress={handleSave}
-            >
-              <Text className="text-white text-center font-medium text-lg">추가하기</Text>
-            </TouchableOpacity>
-          </View>
+              {/* 시간 설정 (일시적 영역일 때만) */}
+              {formData.type === 'temporary' && (
+                <View className="mb-6">
+                  <Text className="text-sm font-medium text-gray-700 mb-3">시간 및 날짜 추가 (필수)</Text>
+
+                  {/* 시작 날짜 */}
+                  <View className="mb-4">
+                    <Text className="text-sm text-gray-600 mb-2">시작 날짜</Text>
+                    <TouchableOpacity
+                      className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3"
+                      onPress={() => setShowDatePicker('start')}
+                    >
+                      <Calendar size={20} color="#6b7280" />
+                      <Text className="ml-3 text-gray-900">{startDate.toLocaleDateString()}</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* 종료 날짜 */}
+                  <View className="mb-4">
+                    <Text className="text-sm text-gray-600 mb-2">종료 날짜</Text>
+                    <TouchableOpacity
+                      className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3"
+                      onPress={() => setShowDatePicker('end')}
+                    >
+                      <Calendar size={20} color="#6b7280" />
+                      <Text className="ml-3 text-gray-900">{endDate.toLocaleDateString()}</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {showDatePicker && (
+                    <DateTimePicker
+                      value={showDatePicker === 'start' ? startDate : endDate}
+                      mode="date"
+                      display="default"
+                      onChange={onDateChange}
+                    />
+                  )}
+                  
+                  {/* 시작 시간 */}
+                  <View className="mb-4">
+                    <Text className="text-sm text-gray-600 mb-2">시작 시간</Text>
+                    {!showStartTimePicker ? (
+                      <TouchableOpacity
+                        className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3"
+                        onPress={() => openTimePicker('start')}
+                      >
+                        <Clock size={20} color="#6b7280" />
+                        <Text className="ml-3 text-gray-900">{startHours}:{startMinutes}</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TimePickerUI 
+                        type="start"
+                        hours={startHours}
+                        minutes={startMinutes}
+                        onClose={() => setShowStartTimePicker(false)}
+                      />
+                    )}
+                  </View>
+
+                  {/* 종료 시간 */}
+                  <View className="mb-4">
+                    <Text className="text-sm text-gray-600 mb-2">끝나는 시간</Text>
+                    {!showEndTimePicker ? (
+                      <TouchableOpacity
+                        className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3"
+                        onPress={() => openTimePicker('end')}
+                      >
+                        <Clock size={20} color="#6b7280" />
+                        <Text className="ml-3 text-gray-900">{endHours}:{endMinutes}</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TimePickerUI 
+                        type="end"
+                        hours={endHours}
+                        minutes={endMinutes}
+                        onClose={() => setShowEndTimePicker(false)}
+                      />
+                    )}
+                  </View>
+                </View>
+              )}
+
+              {/* 추가하기 버튼 */}
+              <TouchableOpacity
+                className="bg-green-500 py-4 rounded-lg"
+                onPress={handleSave}
+              >
+                <Text className="text-white text-center font-medium text-lg">추가하기</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </View>
       </SafeAreaView>
 
