@@ -76,31 +76,8 @@ const MyPage: React.FC = () => {
   }, []);
 
   const handlePasswordChange = async () => {
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      Alert.alert('오류', '새 비밀번호가 일치하지 않습니다.');
-      return;
-    }
-
-    if (!passwordData.currentPassword || !passwordData.newPassword) {
-      Alert.alert('오류', '모든 필드를 입력해주세요.');
-      return;
-    }
-
-    try {
-      // API 호출: PATCH /mypage/password
-      await userService.changePassword({
-        currentPassword: passwordData.currentPassword,
-        newPassword: passwordData.newPassword,
-      });
-
-      setIsPasswordModalOpen(false);
-      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-      Alert.alert('성공', '비밀번호가 변경되었습니다.');
-    } catch (error: any) {
-      console.error('비밀번호 변경 실패:', error);
-      const message = error.response?.data?.message || '비밀번호 변경에 실패했습니다.';
-      Alert.alert('오류', message);
-    }
+    Alert.alert('알림', '추후 추가될 예정입니다.');
+    setIsPasswordModalOpen(false);
   };
 
   const handleLogout = () => {
@@ -260,8 +237,8 @@ const MyPage: React.FC = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50 pt-safe">
-      <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }}>
-        <View className="w-full max-w-2xl mx-auto space-y-8 pb-16">
+      <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        <View className="w-full max-w-2xl mx-auto space-y-8">
           {/* 헤더 */}
           <View className="flex-row items-center justify-center py-4">
             <Text className="text-2xl font-bold text-gray-900">마이페이지</Text>
@@ -400,7 +377,7 @@ const MyPage: React.FC = () => {
             <CardContent>
               <View className="space-y-3">
                 <TouchableOpacity
-                  onPress={() => setIsPasswordModalOpen(true)}
+                  onPress={() => Alert.alert('알림', '추후 추가될 예정입니다.')}
                   className="flex-row items-center justify-between py-2"
                 >
                   <View className="flex-row items-center">

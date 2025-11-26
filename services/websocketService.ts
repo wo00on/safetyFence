@@ -212,6 +212,7 @@ class WebSocketService {
       this.client.deactivate();
       this.client = null;
       this.connectionCallback?.(false);
+      
     }
   }
 
