@@ -91,10 +91,10 @@ export default function SelectRolePage() {
                   <Text className="text-lg font-semibold text-gray-900">
                     이용자
                   </Text>
-                  <Text className="text-sm text-gray-600 mt-1">
+                  <Text className="text-xs text-gray-600 mt-1">
                     서비스를 직접 이용하는 노인 이용자
                   </Text>
-                  <Text className="text-xs text-blue-600 mt-1">
+                  <Text className="text-[10px] text-blue-600 mt-1">
                     • 내 위치 확인 • 활동 로그 • 마이페이지
                   </Text>
                 </View>
@@ -131,10 +131,10 @@ export default function SelectRolePage() {
                   <Text className="text-lg font-semibold text-gray-900">
                     보호자
                   </Text>
-                  <Text className="text-sm text-gray-600 mt-1">
+                  <Text className="text-xs text-gray-600 mt-1">
                     이용자를 돌보는 가족 또는 보호자
                   </Text>
-                  <Text className="text-xs text-green-600 mt-1">
+                  <Text className="text-[10px] text-green-600 mt-1">
                     • 지도 검색 • 이용자 관리 • 알림 • 로그
                   </Text>
                 </View>
