@@ -35,11 +35,11 @@ export default function SelectRolePage() {
           await startTracking();
           disconnectWebSocket();
           connectWebSocket();
-          router.push(`/MapPage`);
+          router.replace(`/MapPage`);
         } else if (Global.USER_ROLE === 'supporter') {
           await stopTracking();
           disconnectWebSocket();
-          router.push(`/LinkPage`);
+          router.replace(`/LinkPage`);
         }
 
       } catch (error) {
