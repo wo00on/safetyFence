@@ -1,13 +1,13 @@
 import Global from '@/constants/Global';
 import { useLocation } from '@/contexts/LocationContext';
-import { NavigationProp, useNavigation, useRoute } from '@react-navigation/native';
+import { NavigationProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import {
   MoreVertical,
   Plus,
   Search,
   User
 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -47,6 +47,24 @@ const UsersScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showDropdown, setShowDropdown] = useState<string | null>(null);
+  const [selectedUserNumber, setSelectedUserNumber] = useState<string | null>(Global.TARGET_NUMBER || null);
+
+  const syncSelectedUserState = useCallback((list: User[]) => {
+    if (Global.TARGET_NUMBER) {
+      const matched = list.find((user) => user.userNumber === Global.TARGET_NUMBER);
+      if (matched) {
+        Global.TARGET_RELATION = matched.relation || '';
+        setSelectedUserNumber(matched.userNumber);
+        return;
+      }
+      setSelectedUserNumber(null);
+      Global.TARGET_RELATION = '';
+      return;
+    }
+
+    Global.TARGET_RELATION = '';
+    setSelectedUserNumber(null);
+  }, []);
 
   const handleAddUser = async () => {
     setIsLoading(true);
@@ -72,6 +90,7 @@ const UsersScreen: React.FC = () => {
       // 목록 새로고침: GET /link/list
       const updatedUsers = await linkService.getList();
       setUsers(updatedUsers);
+      syncSelectedUserState(updatedUsers);
 
       // 모달 닫기 및 초기화
       setIsAddUserDialogOpen(false);
@@ -93,16 +112,25 @@ const UsersScreen: React.FC = () => {
         // API 호출: GET /link/list
         const data = await linkService.getList();
         setUsers(data);
+        syncSelectedUserState(data);
       } catch (err) {
         console.error('이용자 목록 불러오기 실패:', err);
         Alert.alert('오류', '이용자 목록을 불러오는 데 실패했습니다.');
       }
     };
     fetchUsers();
-  }, []);
+  }, [syncSelectedUserState]);
+  useFocusEffect(
+    useCallback(() => {
+      syncSelectedUserState(users);
+    }, [syncSelectedUserState, users])
+  );
 
   const handleUserClick = (userNumber: string) => {
+    const selectedUser = users.find((user) => user.userNumber === userNumber);
+    Global.TARGET_RELATION = selectedUser?.relation || '';
     Global.TARGET_NUMBER = userNumber;
+    setSelectedUserNumber(userNumber);
     setSupporterTarget(userNumber);
     navigation.navigate('MapPage');
   };
@@ -121,6 +149,7 @@ const UsersScreen: React.FC = () => {
             // 목록 새로고침: GET /link/list
             const updatedUsers = await linkService.getList();
             setUsers(updatedUsers);
+            syncSelectedUserState(updatedUsers);
 
             Alert.alert('성공', '이용자가 삭제되었습니다.');
           } catch (error: any) {
@@ -141,35 +170,48 @@ const UsersScreen: React.FC = () => {
     );
   };
 
-  const renderUserCard = (user: User) => (
-    <TouchableOpacity
-      key={user.userNumber}
-      className="bg-white rounded-lg p-4 mb-4 shadow-sm border border-gray-100"
-      onPress={() => handleUserClick(user.userNumber)}
-    >
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center flex-1">
-          <View className="h-12 w-12 bg-green-100 rounded-full items-center justify-center mr-4">
-            <User size={24} color="#25eb25ff" />
+  const renderUserCard = (user: User) => {
+    const isSelected = selectedUserNumber === user.userNumber;
+    return (
+      <TouchableOpacity
+        key={user.userNumber}
+        className={`rounded-2xl mb-4 shadow-sm border px-5 py-5 ${
+          isSelected ? 'border-green-500 bg-green-50' : 'border-gray-100 bg-white'
+        }`}
+        onPress={() => handleUserClick(user.userNumber)}
+        activeOpacity={0.9}
+      >
+        <View className="flex-row items-center justify-between mb-2">
+          <View className="flex-row items-center flex-1">
+            <View className={`h-14 w-14 rounded-full items-center justify-center mr-4 ${isSelected ? 'bg-green-200' : 'bg-green-100'}`}>
+              <User size={26} color="#22c55e" />
+            </View>
+            <View className="flex-1">
+              <Text className="font-semibold text-gray-900 mb-1 text-base">{user.relation}</Text>
+              <Text className="text-sm text-gray-600">{user.userNumber}</Text>
+            </View>
           </View>
-          <View className="flex-1">
-            <Text className="font-medium text-gray-900 mb-1">{user.relation}</Text>
-            <Text className="text-sm text-gray-600">{user.userNumber}</Text>
+          <View className="flex-row items-center">
+            {isSelected && (
+              <View className="bg-green-100 px-3 py-1 rounded-full mr-2">
+                <Text className="text-xs font-semibold text-green-700">현재 선택됨</Text>
+              </View>
+            )}
+            <TouchableOpacity className="p-2" onPress={() => setShowDropdown(showDropdown === user.userNumber ? null : user.userNumber)}>
+              <MoreVertical size={16} color="#6b7280" />
+            </TouchableOpacity>
           </View>
         </View>
-        <TouchableOpacity className="p-2" onPress={() => setShowDropdown(showDropdown === user.userNumber ? null : user.userNumber)}>
-          <MoreVertical size={16} color="#6b7280" />
-        </TouchableOpacity>
-      </View>
-      {showDropdown === user.userNumber && (
-        <View className="absolute right-4 top-16 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-          <TouchableOpacity className="px-4 py-3" onPress={() => handleRemoveUser(user.userNumber)}>
-            <Text className="text-red-600">삭제</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
+        {showDropdown === user.userNumber && (
+          <View className="absolute right-4 top-20 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+            <TouchableOpacity className="px-4 py-3" onPress={() => handleRemoveUser(user.userNumber)}>
+              <Text className="text-red-600">삭제</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   const renderEmptyState = () => (
     <View className="items-center py-12">

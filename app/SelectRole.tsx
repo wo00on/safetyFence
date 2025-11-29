@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // Import AsyncStorage
+import { storage } from '../utils/storage';
 
 type UserRole = 'user' | 'supporter' | null;
 
@@ -29,16 +29,16 @@ export default function SelectRolePage() {
         console.log('선택한 역할:', selectedRole);
 
         Global.USER_ROLE = selectedRole;
-        await AsyncStorage.setItem('userRole', selectedRole); // Save to AsyncStorage
+        await storage.setUserRole(selectedRole);
 
         if (Global.USER_ROLE === 'user') {
           await startTracking();
-          disconnectWebSocket();
+          await disconnectWebSocket();
           connectWebSocket();
           router.replace(`/MapPage`);
         } else if (Global.USER_ROLE === 'supporter') {
           await stopTracking();
-          disconnectWebSocket();
+          await disconnectWebSocket();
           router.replace(`/LinkPage`);
         }
 

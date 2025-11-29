@@ -1,9 +1,8 @@
 import Global from '@/constants/Global';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // Import AsyncStorage
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
-import { useRouter } from 'expo-router'; // Import useRouter
 import { Calendar, MapPin, User, Users } from 'lucide-react-native';
-import React, { useEffect } from 'react'; // Import useEffect
+import React, { useEffect } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -15,7 +14,6 @@ type BottomTabScreenName = 'MapPage' | 'CalendarPage' | 'MyPage' | 'LinkPage';
 
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) => {
   const navigation = useNavigation();
-  const router = useRouter(); // Initialize useRouter
   const insets = useSafeAreaInsets();
 
   const activeColor = '#20e066ff'; // 활성 (녹색)
@@ -34,7 +32,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentScreen }) =>
   }, []); // Run once on mount
 
   const navigateToScreen = (screenName: BottomTabScreenName): void => {
-    router.replace(`/${screenName}`); // Use router.replace for tab navigation
+    navigation.navigate(screenName as never); // Use navigation.navigate to preserve screen state
   };
 
   const getIconColor = (screenName: string) => {

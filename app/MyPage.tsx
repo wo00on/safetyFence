@@ -57,10 +57,32 @@ const MyPage: React.FC = () => {
     setError(null);
 
     try {
-      // API 호출: GET /get/myPageData
+      // 보호자 모드: 선택된 이용자의 데이터 조회
+      const isSupporter = Global.USER_ROLE === 'supporter';
+      const targetNumber = isSupporter && Global.TARGET_NUMBER
+        ? Global.TARGET_NUMBER
+        : undefined;
+
+      // API 호출: GET /get/myPageData (본인 기본 정보)
       const data = await userService.getMyPageData();
+
+      // 지오펜스만 선택된 이용자 것으로 교체
+      if (targetNumber) {
+        const targetGeofences = await geofenceService.getList(targetNumber);
+        data.geofences = targetGeofences.map(g => ({
+          id: g.id,
+          name: g.name,
+          address: g.address,
+          type: g.type,
+          startTime: g.startTime,
+          endTime: g.endTime,
+        }));
+        console.log('마이페이지 데이터 로드 성공 (이용자:', targetNumber, ')');
+      } else {
+        console.log('마이페이지 데이터 로드 성공 (본인)');
+      }
+
       setUserData(data);
-      console.log('마이페이지 데이터 로드 성공:', data);
     } catch (err: any) {
       console.error('사용자 정보 불러오기 실패:', err);
       const msg = err?.message || '사용자 정보 로드 실패';
@@ -284,7 +306,11 @@ const MyPage: React.FC = () => {
             <CardHeader>
               <View className="flex-row items-center">
                 <MapPin size={20} color="#6B7280" />
-                <Text className="ml-2 text-lg font-semibold text-gray-900">등록된 영역 리스트</Text>
+                <Text className="ml-2 text-lg font-semibold text-gray-900">
+                  {Global.USER_ROLE === 'supporter' && Global.TARGET_NUMBER
+                    ? `${Global.TARGET_RELATION || Global.TARGET_NUMBER}의 영역 리스트`
+                    : '등록된 영역 리스트'}
+                </Text>
               </View>
             </CardHeader>
             <CardContent>

@@ -1,3 +1,4 @@
+import Global from '@/constants/Global';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Calendar, CheckSquare, Clock, MapPin, Plus, Trash2 } from 'lucide-react-native';
@@ -15,7 +16,6 @@ import {
 import BottomNavigation from '../components/BottomNavigation';
 import TodoModal from '../components/TodoModal';
 import { calendarService } from '../services/calendarService';
-import type { CalendarDayData } from '../types/api';
 
 // --- 타입 정의 ---
 type RootStackParamList = {
@@ -46,7 +46,16 @@ interface Todo {
   type: 'todo';
 }
 
-type CalendarItem = (Schedule & { itemType: 'schedule' }) | (Todo & { itemType: 'todo' });
+interface Log {
+  id: number; // logId
+  location: string;
+  address: string;
+  arriveTime: string;
+  date: string;
+  type: 'log';
+}
+
+type CalendarItem = (Schedule & { itemType: 'schedule' }) | (Todo & { itemType: 'todo' }) | (Log & { itemType: 'log' });
 
 // --- 상수 ---
 // 로컬 시간 기준으로 오늘 날짜 생성
@@ -159,11 +168,38 @@ const TodoCard: React.FC<{ todo: Todo; onDelete: (id: number) => void }> = React
   </View>
 ));
 
+// --- 분리된 로그 카드 컴포넌트 ---
+const LogCard: React.FC<{ log: Log }> = React.memo(({ log }) => (
+  <View className="bg-white rounded-xl shadow p-4 mb-3 border border-gray-100">
+    <View className="flex-row items-start">
+      <View className="h-11 w-11 bg-blue-50 rounded-lg items-center justify-center mr-3">
+        <MapPin size={20} color="#3B82F6" />
+      </View>
+      <View className="flex-1">
+        <Text className="text-base font-bold text-gray-900 mb-1">{log.location}</Text>
+        <View className="flex-row items-center mb-2">
+          <Clock size={13} color="#6b7280" />
+          <Text className="text-sm text-gray-600 ml-1.5">
+            {log.arriveTime}
+          </Text>
+        </View>
+        <Text className="text-sm text-gray-500 mb-3">{log.address}</Text>
+        <View className="self-start px-2.5 py-1 rounded-full bg-blue-100">
+          <Text className="text-xs font-semibold text-blue-700">
+            과거 로그
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+));
+
 // --- 메인 캘린더 페이지 컴포넌트 ---
 const CalendarPage: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [todos, setTodos] = useState<Todo[]>([]);
+  const [logs, setLogs] = useState<Log[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(todayDateStr);
   const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [isTodoModalVisible, setIsTodoModalVisible] = useState(false);
@@ -174,13 +210,32 @@ const CalendarPage: React.FC = () => {
     const loadCalendarData = async () => {
       setIsLoading(true);
       try {
-        const calendarData = await calendarService.getUserData();
+        // 보호자 모드: 선택된 이용자의 캘린더 데이터 조회
+        const targetNumber = Global.USER_ROLE === 'supporter' && Global.TARGET_NUMBER
+          ? Global.TARGET_NUMBER
+          : undefined;
+
+        const calendarData = await calendarService.getUserData(targetNumber);
+        console.log('캘린더 데이터 조회:', targetNumber ? `이용자 ${targetNumber}` : '본인');
 
         // 데이터 변환: API 응답 -> UI 형식
         const allSchedules: Schedule[] = [];
         const allTodos: Todo[] = [];
+        const allLogs: Log[] = [];
 
         calendarData.forEach((dayData) => {
+          // logs를 Log[]로 변환
+          dayData.logs.forEach((log) => {
+            allLogs.push({
+              id: log.logId,
+              location: log.location,
+              address: log.locationAddress,
+              arriveTime: log.arriveTime,
+              date: dayData.date,
+              type: 'log',
+            });
+          });
+
           // geofences를 schedules로 변환
           dayData.geofences.forEach((fence) => {
             // ISO 문자열에서 HH:mm 추출
@@ -219,7 +274,8 @@ const CalendarPage: React.FC = () => {
 
         setSchedules(allSchedules);
         setTodos(allTodos);
-        console.log('캘린더 데이터 로드 성공:', allSchedules.length, 'schedules,', allTodos.length, 'todos');
+        setLogs(allLogs);
+        console.log('캘린더 데이터 로드 성공:', allLogs.length, 'logs,', allSchedules.length, 'schedules,', allTodos.length, 'todos');
       } catch (error) {
         console.error('캘린더 데이터 로드 실패:', error);
         Alert.alert('오류', '캘린더 데이터를 불러오는 데 실패했습니다.');
@@ -233,22 +289,32 @@ const CalendarPage: React.FC = () => {
 
   const itemsByDate = useMemo(() => {
     const map = new Map<string, CalendarItem[]>();
-    [...schedules, ...todos].forEach(item => {
+    [...logs, ...schedules, ...todos].forEach(item => {
       const date = item.date;
       const items = map.get(date) || [];
-      const typedItem = item.type === 'todo' 
+      const typedItem = item.type === 'log'
+        ? { ...item, itemType: 'log' as const }
+        : item.type === 'todo'
         ? { ...item, itemType: 'todo' as const }
         : { ...item, itemType: 'schedule' as const };
       map.set(date, [...items, typedItem]);
     });
     return map;
-  }, [schedules, todos]);
+  }, [logs, schedules, todos]);
 
   const sortedSelectedDateItems = useMemo(() => {
     const items = itemsByDate.get(selectedDate) || [];
     return [...items].sort((a, b) => {
-      const timeA = a.itemType === 'schedule' ? a.startTime : a.time.getHours().toString().padStart(2, '0') + ':' + a.time.getMinutes().toString().padStart(2, '0');
-      const timeB = b.itemType === 'schedule' ? b.startTime : b.time.getHours().toString().padStart(2, '0') + ':' + b.time.getMinutes().toString().padStart(2, '0');
+      const timeA = a.itemType === 'log'
+        ? a.arriveTime
+        : a.itemType === 'schedule'
+        ? a.startTime
+        : a.time.getHours().toString().padStart(2, '0') + ':' + a.time.getMinutes().toString().padStart(2, '0');
+      const timeB = b.itemType === 'log'
+        ? b.arriveTime
+        : b.itemType === 'schedule'
+        ? b.startTime
+        : b.time.getHours().toString().padStart(2, '0') + ':' + b.time.getMinutes().toString().padStart(2, '0');
       return timeA.localeCompare(timeB);
     });
   }, [itemsByDate, selectedDate]);
@@ -265,15 +331,20 @@ const CalendarPage: React.FC = () => {
 
   const handleTodoSave = async (data: { title: string; time: Date; description?: string }) => {
     try {
+      // 보호자 모드인 경우 선택한 이용자 번호 가져오기
+      const targetNumber = Global.USER_ROLE === 'supporter' && Global.TARGET_NUMBER
+        ? Global.TARGET_NUMBER
+        : undefined;
+
       // API 호출: POST /calendar/addEvent
       await calendarService.addEvent({
         event: data.title,
         eventDate: selectedDate,
         startTime: `${data.time.getHours().toString().padStart(2, '0')}:${data.time.getMinutes().toString().padStart(2, '0')}`,
-      });
+      }, targetNumber);
 
       // 캘린더 데이터 새로고침
-      const calendarData = await calendarService.getUserData();
+      const calendarData = await calendarService.getUserData(targetNumber);
       const allTodos: Todo[] = [];
 
       calendarData.forEach((dayData) => {
@@ -310,7 +381,12 @@ const CalendarPage: React.FC = () => {
         style: 'destructive',
         onPress: async () => {
           try {
-            await calendarService.deleteEvent(eventId);
+            // 보호자 모드인 경우 선택한 이용자 번호 가져오기
+            const targetNumber = Global.USER_ROLE === 'supporter' && Global.TARGET_NUMBER
+              ? Global.TARGET_NUMBER
+              : undefined;
+
+            await calendarService.deleteEvent(eventId, targetNumber);
             setTodos(prev => prev.filter(todo => todo.id !== eventId));
             Alert.alert('성공', '할 일이 삭제되었습니다.');
           } catch (error) {
@@ -323,10 +399,12 @@ const CalendarPage: React.FC = () => {
   };
 
   const renderItem = ({ item }: { item: CalendarItem }) => {
-    if (item.itemType === 'schedule') {
-      return <ScheduleCard key={item.id} schedule={item} />;
+    if (item.itemType === 'log') {
+      return <LogCard key={`log-${item.id}`} log={item} />;
+    } else if (item.itemType === 'schedule') {
+      return <ScheduleCard key={`schedule-${item.id}`} schedule={item} />;
     } else {
-      return <TodoCard key={item.id} todo={item} onDelete={handleTodoDelete} />;
+      return <TodoCard key={`todo-${item.id}`} todo={item} onDelete={handleTodoDelete} />;
     }
   };
 
@@ -341,7 +419,11 @@ const CalendarPage: React.FC = () => {
         
         {/* 헤더 */}
         <View className="px-5 pt-5 pb-4">
-          <Text className="text-3xl font-bold text-gray-900">캘린더</Text>
+          <Text className="text-3xl font-bold text-gray-900">
+            {Global.USER_ROLE === 'supporter' && Global.TARGET_NUMBER
+              ? `${(Global.TARGET_RELATION || Global.TARGET_NUMBER)}의 캘린더`
+              : '캘린더'}
+          </Text>
         </View>
 
         {/* 캘린더 카드 */}
@@ -367,7 +449,7 @@ const CalendarPage: React.FC = () => {
 
           {/* 요일 헤더 */}
           <View className="flex-row mb-2">
-            {['일', '월', '화', '수', '목', '금', '토'].map((day, idx) => (
+            {['일', '월', '화', '수', '목', '금', '토'].map((day) => (
               <View key={day} className="flex-1 items-center py-2">
                 <Text className="text-sm font-medium text-gray-400">{day}</Text>
               </View>
