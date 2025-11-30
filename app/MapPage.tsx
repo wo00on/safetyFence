@@ -1,36 +1,32 @@
-import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import Global from '@/constants/Global';
 import { customMapStyle } from '@/styles/MapPageStyles';
-import { useRouter } from 'expo-router'; // useRouter 임포트
+import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { useLocation } from '../contexts/LocationContext';
 import { geofenceService } from '../services/geofenceService';
-import type { GeofenceItem } from '../types/api';
 
 import {
-  MapPin, // FAB 버튼용 MapPin은 유지
+  MapPin,
   Plus,
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
-  Animated,
-  Image, // Image 컴포넌트 임포트 확인
-  Linking, // 설정으로 이동하기 위한 Linking 추가
+  Linking,
   Platform,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-} from 'react-native'; // react-native 임포트 정리
-import MapView, { Callout, Circle, Marker, PROVIDER_GOOGLE } from 'react-native-maps'; // Callout, Circle 추가
+  View
+} from 'react-native';
+import MapView, { Circle, Marker, PROVIDER_GOOGLE } from 'react-native-maps'; // Callout 추가
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomNavigation from '../components/BottomNavigation';
 import GeofenceModal from '../components/GeofenceModal';
 
-// (Interface 정의들은 이전과 동일)
+import CustomMarker from '../components/CustomMarker';
+
 interface RealTimeLocation {
   latitude: number;
   longitude: number;
@@ -55,7 +51,6 @@ interface UserLocation {
 type UserRole = 'user' | 'supporter' | null;
 
 const MainPage: React.FC = () => {
-  // Context에서 위치 및 WebSocket 상태 가져오기
   const {
     isTracking,
     currentLocation,
@@ -67,61 +62,11 @@ const MainPage: React.FC = () => {
     loadGeofences,
   } = useLocation();
 
-  const router = useRouter(); // useRouter 초기화
-
+  const router = useRouter();
   const mapRef = useRef<MapView>(null);
 
-  // Animation setup
-  const animatedValue = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(animatedValue, {
-          toValue: 1,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(animatedValue, {
-          toValue: 0,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [animatedValue]);
-
-  const animatedStyle = {
-    transform: [
-      {
-        translateY: animatedValue.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, -10], // Bounces 10px up
-        }),
-      },
-    ],
-  };
-
-  const shadowAnimatedStyle = {
-    opacity: animatedValue.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0.5, 0.2], // Higher animated opacity range
-    }),
-    transform: [
-      {
-        scale: animatedValue.interpolate({
-          inputRange: [0, 1],
-          outputRange: [1, 0.8],
-        }),
-      },
-    ],
-  };
-
-  // MapPage만의 로컬 상태
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [isGeofenceModalVisible, setIsGeofenceModalVisible] = useState(false);
-  const [tracksViewChanges, setTracksViewChanges] = useState(true);
 
   const moveToLocation = useCallback((location: RealTimeLocation) => {
     mapRef.current?.animateToRegion({
@@ -132,24 +77,19 @@ const MainPage: React.FC = () => {
     }, 1000);
   }, []);
 
-  // MapPage 초기화: userRole 설정 및 초기 위치로 지도 이동
   useEffect(() => {
-    // 사용자 역할 설정
     const role = Global.USER_ROLE;
     if (role === 'user' || role === 'supporter') {
       setUserRole(role);
       console.log('📍 MapPage - 사용자 역할:', role);
     }
 
-    // Context에서 가져온 현재 위치로 지도 이동
     if (currentLocation) {
       console.log('📍 MapPage - 초기 위치로 지도 이동');
       moveToLocation(currentLocation);
     }
   }, [currentLocation, moveToLocation]);
 
-
-  // 화면 focus 시 지오펜스 목록 로드
   useFocusEffect(
     useCallback(() => {
       if (userRole) {
@@ -159,8 +99,7 @@ const MainPage: React.FC = () => {
   );
 
   const moveToMyLocation = () => {
-    // Context에서 현재 위치 가져오기
-    const location = currentLocation || targetLocation; // 이용자 또는 보호자 위치
+    const location = currentLocation || targetLocation;
     if (location) {
       moveToLocation(location);
     } else {
@@ -176,10 +115,8 @@ const MainPage: React.FC = () => {
     endTime?: Date
   }) => {
     try {
-      // type 변환: 'permanent' -> 0, 'temporary' -> 1
       const apiType = data.type === 'permanent' ? 0 : 1;
 
-      // 시간 변환: Date -> HH:mm 형식 문자열
       const startTime = data.startTime
         ? `${String(data.startTime.getHours()).padStart(2, '0')}:${String(data.startTime.getMinutes()).padStart(2, '0')}`
         : null;
@@ -187,12 +124,10 @@ const MainPage: React.FC = () => {
         ? `${String(data.endTime.getHours()).padStart(2, '0')}:${String(data.endTime.getMinutes()).padStart(2, '0')}`
         : null;
 
-      // 보호자 모드인 경우 선택한 이용자 번호 가져오기
       const targetNumber = userRole === 'supporter' && Global.TARGET_NUMBER
         ? Global.TARGET_NUMBER
         : undefined;
 
-      // API 호출: POST /geofence/newFence
       await geofenceService.create({
         name: data.name,
         address: data.address,
@@ -201,7 +136,6 @@ const MainPage: React.FC = () => {
         endTime,
       }, targetNumber);
 
-      // LocationContext의 지오펜스 목록 새로고침
       await loadGeofences();
 
       Alert.alert('성공', `${data.name} 영역이 추가되었습니다.`);
@@ -228,8 +162,6 @@ const MainPage: React.FC = () => {
                 : undefined;
 
               await geofenceService.delete({ id: geofenceId }, targetNumber);
-
-              // LocationContext의 지오펜스 목록 새로고침
               await loadGeofences();
 
               Alert.alert('성공', '지오펜스가 삭제되었습니다.');
@@ -245,7 +177,6 @@ const MainPage: React.FC = () => {
   };
 
   const getCurrentDisplayLocation = (): UserLocation | null => {
-    // 보호자: 이용자의 위치 표시
     if (userRole === 'supporter' && targetLocation) {
       return {
         lat: targetLocation.latitude,
@@ -255,7 +186,6 @@ const MainPage: React.FC = () => {
       };
     }
 
-    // 이용자: 자신의 위치 표시
     if (userRole === 'user' && currentLocation) {
       return {
         lat: currentLocation.latitude,
@@ -266,8 +196,7 @@ const MainPage: React.FC = () => {
     }
 
     return null;
-  }; // getCurrentDisplayLocation 닫는 괄호
-
+  };
 
   const userLocation = getCurrentDisplayLocation();
 
@@ -327,10 +256,10 @@ const MainPage: React.FC = () => {
         <Text style={{ fontFamily: 'System' }} className="text-gray-700 text-lg">위치 정보를 불러오는 중...</Text>
       </SafeAreaView>
     );
-  } // if 닫는 괄호
+  }
 
   if (locationError) {
-     return (
+    return (
       <SafeAreaView className="flex-1 justify-center items-center bg-green-50 p-5">
         <Text style={{ fontFamily: 'System' }} className="text-red-600 text-lg text-center mb-4">오류 발생</Text>
         <Text style={{ fontFamily: 'System' }} className="text-gray-700 text-base text-center">{locationError}</Text>
@@ -344,31 +273,30 @@ const MainPage: React.FC = () => {
         )}
       </SafeAreaView>
     );
-  } // if 닫는 괄호
+  }
 
   if (userRole === null) {
-     return (
+    return (
       <SafeAreaView className="flex-1 justify-center items-center bg-green-50">
         <Text style={{ fontFamily: 'System' }} className="text-gray-700 text-lg">역할 정보를 확인 중입니다...</Text>
       </SafeAreaView>
     );
-  } // if 닫는 괄호
+  }
 
   if (!userLocation) {
-      return (
+    return (
       <SafeAreaView className="flex-1 justify-center items-center bg-green-50">
         <Text style={{ fontFamily: 'System' }} className="text-gray-700 text-lg">현재 위치를 찾는 중...</Text>
       </SafeAreaView>
     );
-  } // if 닫는 괄호
+  }
 
-  const region = { // userLocation이 있다는 것이 보장됨
+  const region = {
     latitude: userLocation.lat,
     longitude: userLocation.lng,
     latitudeDelta: 0.01,
     longitudeDelta: 0.01,
-  }; // region 객체 닫는 괄호
-
+  };
 
   const FloatingButtons: React.FC = () => (
     <View style={styles.fabContainer} pointerEvents="box-none">
@@ -390,9 +318,7 @@ const MainPage: React.FC = () => {
         <MapPin size={24} color="#fff" />
       </TouchableOpacity>
     </View>
-  ); // FloatingButtons 닫는 괄호
-
-
+  );
 
   const headerText = userRole === 'user'
     ? '내 위치'
@@ -401,15 +327,15 @@ const MainPage: React.FC = () => {
       : '이용자 위치';
   const baseHeaderSubText = userRole === 'user'
     ? (isTracking
-        ? `GPS 데이터 수집 중${isWebSocketConnected ? ' • 서버 연결됨' : ' • 서버 연결 안됨'}`
-        : 'GPS 미작동 중')
+      ? `GPS 데이터 수집 중${isWebSocketConnected ? ' • 서버 연결됨' : ' • 서버 연결 안됨'}`
+      : 'GPS 미작동 중')
     : (!Global.TARGET_NUMBER
-        ? '추적할 이용자를 선택해주세요.'
-        : !isWebSocketConnected
-          ? `${supporterDisplayLabel}의 위치 정보를 받지 못하고 있습니다.`
-          : targetLocation
-            ? `${supporterDisplayLabel}의 위치를 지도에 표시하고 있습니다.`
-            : `${supporterDisplayLabel}의 위치 데이터를 수신하는 중입니다...`);
+      ? '추적할 이용자를 선택해주세요.'
+      : !isWebSocketConnected
+        ? `${supporterDisplayLabel}의 위치 정보를 받지 못하고 있습니다.`
+        : targetLocation
+          ? `${supporterDisplayLabel}의 위치를 지도에 표시하고 있습니다.`
+          : `${supporterDisplayLabel}의 위치 데이터를 수신하는 중입니다...`);
 
   const headerSubText = locationFreshnessMessage
     ? `${baseHeaderSubText}\n${locationFreshnessMessage}`
@@ -418,12 +344,10 @@ const MainPage: React.FC = () => {
   return (
     <View className="flex-1 bg-green-50">
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
-      
-      {/* MapView가 전체 배경을 차지하도록 설정 */}
+
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
-        // style={{ flex: 1 }}
         style={{ flex: 1 }}
         region={region}
         customMapStyle={customMapStyle}
@@ -433,44 +357,20 @@ const MainPage: React.FC = () => {
         toolbarEnabled={false}
       >
         {userLocation && (
-          <Marker
+          <CustomMarker
             coordinate={{
               latitude: userLocation.lat,
               longitude: userLocation.lng,
             }}
-            anchor={{ x: 0.5, y: 1 }}
-            tracksViewChanges
-          >
-            <View style={{ alignItems: 'center', paddingTop: 20 }}>
-              <Animated.View style={animatedStyle}>
-                <Image
-                  source={require('../assets/images/mappin1.png')}
-                  style={{
-                    width: 60,
-                    height: 60,
-                    resizeMode: 'contain',
-                  }}
-                />
-              </Animated.View>
-              <Animated.View style={[styles.shadow, shadowAnimatedStyle]} />
-            </View>
-            <Callout tooltip>
-              <View style={styles.calloutContainer}>
-                <Text style={styles.calloutTitle}>{userLocation.name}</Text>
-                <Text style={styles.calloutDescription}>
-                  {isTracking ? "실시간 추적 중" : "현재 위치"}
-                </Text>
-              </View>
-            </Callout>
-          </Marker>
+            name={userLocation.name}
+            status={userLocation.status}
+          />
         )}
-
-        {/* 지오펜스 Circle과 Marker 렌더링 */}
         {geofences.map((fence) => (
           <React.Fragment key={fence.id}>
             <Circle
               center={{ latitude: fence.latitude, longitude: fence.longitude }}
-              radius={200} // 기본 반경 200미터
+              radius={200}
               strokeColor="rgba(37, 235, 103, 0.5)"
               strokeWidth={2}
               fillColor="rgba(37, 235, 103, 0.15)"
@@ -486,7 +386,6 @@ const MainPage: React.FC = () => {
         ))}
       </MapView>
 
-      {/* Header (상단에 오버레이) */}
       <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0 }} edges={['top']}>
         <View className="p-3">
           <View
@@ -501,24 +400,23 @@ const MainPage: React.FC = () => {
         </View>
       </SafeAreaView>
 
-      {/* Floating Buttons and Bottom Navigation (하단에 오버레이) */}
       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
         <FloatingButtons />
         <BottomNavigation currentScreen="MapPage" />
       </View>
 
       <GeofenceModal
-         visible={isGeofenceModalVisible}
-         onClose={() => setIsGeofenceModalVisible(false)}
-         onSave={handleGeofenceSave}
-         initialLocation={currentLocation ? {
-           latitude: currentLocation.latitude,
-           longitude: currentLocation.longitude
-         } : undefined}
-       />
+        visible={isGeofenceModalVisible}
+        onClose={() => setIsGeofenceModalVisible(false)}
+        onSave={handleGeofenceSave}
+        initialLocation={currentLocation ? {
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude
+        } : undefined}
+      />
     </View>
-  ); // return 닫는 괄호
-}; // MainPage 컴포넌트 닫는 괄호
+  );
+};
 
 export default MainPage;
 
@@ -549,37 +447,4 @@ const styles = StyleSheet.create({
   fabSecondary: {
     backgroundColor: '#04faacff',
   },
-  shadow: {
-    backgroundColor: 'rgba(0,0,0,0.3)', // Darker shadow
-    borderRadius: 30, // Larger borderRadius
-    width: 10, // Wider shadow
-    height: 8, // Taller shadow
-    marginTop: -2, // Move slightly down
-  },
-  calloutContainer: {
-    backgroundColor: 'white',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    width: 140,
-    borderColor: '#04faacff',
-    borderWidth: 1,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  calloutTitle: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 4,
-    color: '#333',
-  },
-  calloutDescription: {
-    fontSize: 14,
-    textAlign: 'center',
-    color: '#555',
-  },
-}); // StyleSheet 닫는 괄호
+});
