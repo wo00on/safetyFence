@@ -404,6 +404,10 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
     supporterTargetRef.current = targetNumber;
     Global.TARGET_NUMBER = targetNumber;
     setTargetLocation(null);
+
+    // 선택한 이용자의 지오펜스 자동 로드
+    loadGeofences();
+
     if (isWebSocketConnected) {
       console.log(`👥 보호자 모드: ${targetNumber}의 위치 구독 시작`);
       subscribeToSupporterTarget(targetNumber);
@@ -414,19 +418,36 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
 
   /**
    * 지오펜스 목록 로드
+   * - 이용자: 본인의 지오펜스
+   * - 보호자: 선택한 이용자의 지오펜스 (Global.TARGET_NUMBER)
    */
   const loadGeofences = useCallback(async () => {
-    if (Global.USER_ROLE !== 'user') {
-      console.log('ℹ️ 지오펜스는 이용자 모드에서만 로드됨');
-      return;
-    }
-
     try {
-      const data = await geofenceService.getList();
+      let targetNumber: string | undefined;
+
+      if (Global.USER_ROLE === 'user') {
+        // 이용자: 본인 지오펜스 (targetNumber = undefined → API에서 Global.NUMBER 사용)
+        targetNumber = undefined;
+      } else if (Global.USER_ROLE === 'supporter') {
+        // 보호자: 선택한 이용자 지오펜스
+        if (!Global.TARGET_NUMBER) {
+          console.log('ℹ️ 보호자 모드: 이용자를 먼저 선택해주세요');
+          setGeofences([]); // 빈 배열로 초기화
+          return;
+        }
+        targetNumber = Global.TARGET_NUMBER;
+        console.log(`📍 보호자 모드: ${targetNumber}의 지오펜스 로드`);
+      } else {
+        console.log('ℹ️ 역할이 설정되지 않았습니다');
+        return;
+      }
+
+      const data = await geofenceService.getList(targetNumber);
       setGeofences(data);
-      console.log('✅ 지오펜스 목록 로드 성공:', data.length);
+      console.log(`✅ 지오펜스 목록 로드 성공: ${data.length}개 (${Global.USER_ROLE === 'supporter' ? `이용자: ${targetNumber}` : '본인'})`);
     } catch (error) {
       console.error('❌ 지오펜스 목록 로드 실패:', error);
+      setGeofences([]); // 에러 시 빈 배열
     }
   }, []);
 

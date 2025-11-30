@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "paypass_frontend",
+    "name": "SafetyFence",
     "slug": "paypass_frontend",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "paypass_frontend",
+    "icon": "./assets/images/logo.png",
+    "scheme": "safetyfence",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -17,23 +17,42 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "SafetyFence가 앱 사용 중 및 백그라운드에서 안전 영역 모니터링을 위해 위치 정보를 사용합니다.",
         "UIBackgroundModes": [
           "location",
+          "fetch",
+          "location",
           "fetch"
-        ]
+        ],
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
+        "ITSAppUsesNonExemptEncryption": false
       }
+    },
+    "web": {
+      "favicon": "./assets/images/logo.png",
+      "bundler": "metro",
+      "output": "static",
+      "name": "SafetyFence",
+      "shortName": "SafetyFence",
+      "description": "어르신의 안전을 지키는 위치 기반 케어 서비스",
+      "themeColor": "#ffffff",
+      "backgroundColor": "#ffffff",
+      "display": "standalone",
+      "orientation": "portrait",
+      "startUrl": "/"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/logo.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": false,
-      "usesCleartextTraffic": true,
       "permissions": [
+        "INTERNET",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_LOCATION",
+        "android.permission.INTERNET",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_BACKGROUND_LOCATION",
@@ -45,10 +64,6 @@
           "apiKey": "AIzaSyBwR5FvsDa4kUc3FTD14svwssHNM-tUhSM"
         }
       },
-      "foregroundService": {
-        "notificationTitle": "안전 울타리",
-        "notificationBody": "어르신의 위치를 안전하게 공유 중입니다."
-      },
       "package": "com.paypass.safetyfence"
     },
     "plugins": [
@@ -56,7 +71,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
@@ -71,7 +86,15 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -200,6 +200,15 @@ const MainPage: React.FC = () => {
 
   const userLocation = getCurrentDisplayLocation();
 
+  useEffect(() => {
+    if (!userLocation) {
+      return;
+    }
+    setTracksViewChanges(true);
+    const timeout = setTimeout(() => setTracksViewChanges(false), 600);
+    return () => clearTimeout(timeout);
+  }, [userLocation]);
+
   const getSupporterDisplayLabel = () => {
     const relation = (Global.TARGET_RELATION || '').trim();
     if (relation) {
@@ -355,6 +364,13 @@ const MainPage: React.FC = () => {
         showsUserLocation={false}
         showsMyLocationButton={false}
         toolbarEnabled={false}
+        loadingEnabled={true}
+        loadingIndicatorColor="#22c55e"
+        moveOnMarkerPress={false}
+        zoomEnabled={true}
+        scrollEnabled={true}
+        pitchEnabled={false}
+        rotateEnabled={false}
       >
         {userLocation && (
           <CustomMarker
@@ -362,9 +378,31 @@ const MainPage: React.FC = () => {
               latitude: userLocation.lat,
               longitude: userLocation.lng,
             }}
-            name={userLocation.name}
-            status={userLocation.status}
-          />
+            anchor={{ x: 0.5, y: 1 }}
+            tracksViewChanges={tracksViewChanges}
+          >
+            <View
+              style={styles.markerWrapper}
+              collapsable={false}
+              pointerEvents="none"
+            >
+              <Animated.View style={animatedStyle}>
+                <Image
+                  source={require('../assets/images/mappin1.png')}
+                  style={styles.markerImage}
+                />
+              </Animated.View>
+              <Animated.View style={[styles.shadow, shadowAnimatedStyle]} />
+            </View>
+            <Callout tooltip>
+              <View style={styles.calloutContainer}>
+                <Text style={styles.calloutTitle}>{userLocation.name}</Text>
+                <Text style={styles.calloutDescription}>
+                  {isTracking ? "실시간 추적 중" : "현재 위치"}
+                </Text>
+              </View>
+            </Callout>
+          </Marker>
         )}
         {geofences.map((fence) => (
           <React.Fragment key={fence.id}>
@@ -447,4 +485,49 @@ const styles = StyleSheet.create({
   fabSecondary: {
     backgroundColor: '#04faacff',
   },
-});
+  markerWrapper: {
+    width: 96,
+    height: 96,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    backgroundColor: 'transparent',
+  },
+  markerImage: {
+    width: 80,
+    height: 80,
+    resizeMode: 'contain',
+  },
+  shadow: {
+    backgroundColor: 'rgba(0,0,0,0.3)', // Darker shadow
+    borderRadius: 30, // Larger borderRadius
+    width: 10, // Wider shadow
+    height: 8, // Taller shadow
+    marginTop: -2, // Move slightly down
+  },
+  calloutContainer: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    width: 140,
+    borderColor: '#04faacff',
+    borderWidth: 1,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  calloutTitle: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 4,
+    color: '#333',
+  },
+  calloutDescription: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: '#555',
+  },
+}); // StyleSheet 닫는 괄호
