@@ -1,3 +1,6 @@
+import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import Global from '@/constants/Global';
 import { customMapStyle } from '@/styles/MapPageStyles';
 import { useRouter } from 'expo-router'; // useRouter 임포트
@@ -60,6 +63,8 @@ const MainPage: React.FC = () => {
     isLoading,
     isWebSocketConnected,
     targetLocation,
+    geofences,
+    loadGeofences,
   } = useLocation();
 
   const router = useRouter(); // useRouter 초기화
@@ -115,9 +120,8 @@ const MainPage: React.FC = () => {
 
   // MapPage만의 로컬 상태
   const [userRole, setUserRole] = useState<UserRole>(null);
-  const [geofences, setGeofences] = useState<GeofenceItem[]>([]);
   const [isGeofenceModalVisible, setIsGeofenceModalVisible] = useState(false);
-  const [lastGeofenceCheck, setLastGeofenceCheck] = useState<{ [key: number]: boolean }>({});
+  const [tracksViewChanges, setTracksViewChanges] = useState(true);
 
   const moveToLocation = useCallback((location: RealTimeLocation) => {
     mapRef.current?.animateToRegion({
@@ -145,123 +149,14 @@ const MainPage: React.FC = () => {
   }, [currentLocation, moveToLocation]);
 
 
-  // 지오펜스 목록 로드
-  useEffect(() => {
-    const loadGeofences = async () => {
-      if (!userRole) return;
-
-      try {
-        const data = await geofenceService.getList();
-        setGeofences(data);
-        console.log('지오펜스 목록 로드 성공:', data.length);
-      } catch (error) {
-        console.error('지오펜스 목록 로드 실패:', error);
+  // 화면 focus 시 지오펜스 목록 로드
+  useFocusEffect(
+    useCallback(() => {
+      if (userRole) {
+        loadGeofences();
       }
-    };
-
-    loadGeofences();
-  }, [userRole]);
-
-  // 지오펜스 진입 감지 (user role일 때만, 10초마다)
-  useEffect(() => {
-    if (userRole !== 'user' || geofences.length === 0) {
-      return;
-    }
-
-    // Haversine 공식으로 거리 계산 (미터 단위)
-    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-      const R = 6371000; // 지구 반지름 (미터)
-      const dLat = ((lat2 - lat1) * Math.PI) / 180;
-      const dLon = ((lon2 - lon1) * Math.PI) / 180;
-      const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos((lat1 * Math.PI) / 180) *
-          Math.cos((lat2 * Math.PI) / 180) *
-          Math.sin(dLon / 2) *
-          Math.sin(dLon / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
-    };
-
-    const checkGeofenceEntry = async () => {
-      // 최신 currentLocation 사용
-      if (!currentLocation) return;
-
-      const currentLat = currentLocation.latitude;
-      const currentLng = currentLocation.longitude;
-      const now = new Date();
-      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-      // 시간 체크 헬퍼 함수
-      const isWithinTimeRange = (startTime: string | null, endTime: string | null): boolean => {
-        if (!startTime || !endTime) return true; // 시간 미설정 시 항상 활성
-
-        const [currentHour, currentMin] = currentTime.split(':').map(Number);
-        const [startHour, startMin] = startTime.split(':').map(Number);
-        const [endHour, endMin] = endTime.split(':').map(Number);
-
-        const currentMinutes = currentHour * 60 + currentMin;
-        const startMinutes = startHour * 60 + startMin;
-        const endMinutes = endHour * 60 + endMin;
-
-        // 자정을 넘는 경우 (예: 23:00 ~ 02:00)
-        if (startMinutes > endMinutes) {
-          return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
-        }
-
-        // 일반 케이스 (예: 14:00 ~ 18:00)
-        return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
-      };
-
-      for (const fence of geofences) {
-        // 1. 거리 체크
-        const distance = calculateDistance(currentLat, currentLng, fence.latitude, fence.longitude);
-        const radius = 200; // 기본 반경 200미터
-        const isInside = distance <= radius;
-
-        // 2. 시간 체크 (일시적 지오펜스만)
-        const isTimeActive = fence.type === 0 || isWithinTimeRange(fence.startTime, fence.endTime);
-
-        // 3. 진입 조건: 거리 내 + 시간 조건 만족
-        const canEnter = isInside && isTimeActive;
-
-        // 진입 감지: 이전에 밖에 있었는데 지금 안에 들어옴
-        if (canEnter && !lastGeofenceCheck[fence.id]) {
-          try {
-            await geofenceService.recordEntry({ geofenceId: fence.id });
-            console.log(`✅ 지오펜스 진입 기록: ${fence.name} (${fence.type === 0 ? '영구' : `일시 ${fence.startTime}-${fence.endTime}`})`);
-            setLastGeofenceCheck(prev => ({ ...prev, [fence.id]: true }));
-          } catch (error) {
-            console.error('❌ 지오펜스 진입 기록 실패:', error);
-          }
-        }
-        // 이탈 감지: 영구 지오펜스만 이탈 추적 (일시적 지오펜스는 진입 후 사라짐)
-        else if (fence.type === 0 && (!canEnter) && lastGeofenceCheck[fence.id]) {
-          console.log(`🚪 영구 지오펜스 이탈: ${fence.name}`);
-          setLastGeofenceCheck(prev => {
-            const updated = { ...prev };
-            delete updated[fence.id];
-            return updated;
-          });
-        }
-      }
-    };
-
-    // 10초마다 지오펜스 검사
-    const geofenceCheckInterval = setInterval(() => {
-      checkGeofenceEntry();
-    }, 10000);
-
-    // 초기 검사 (즉시 실행)
-    checkGeofenceEntry();
-
-    console.log('🔍 지오펜스 검사 시작 (10초 주기)');
-
-    return () => {
-      clearInterval(geofenceCheckInterval);
-      console.log('🔍 지오펜스 검사 중지');
-    };
-  }, [userRole, geofences]);
+    }, [userRole, loadGeofences])
+  );
 
   const moveToMyLocation = () => {
     // Context에서 현재 위치 가져오기
@@ -292,6 +187,11 @@ const MainPage: React.FC = () => {
         ? `${String(data.endTime.getHours()).padStart(2, '0')}:${String(data.endTime.getMinutes()).padStart(2, '0')}`
         : null;
 
+      // 보호자 모드인 경우 선택한 이용자 번호 가져오기
+      const targetNumber = userRole === 'supporter' && Global.TARGET_NUMBER
+        ? Global.TARGET_NUMBER
+        : undefined;
+
       // API 호출: POST /geofence/newFence
       await geofenceService.create({
         name: data.name,
@@ -299,11 +199,10 @@ const MainPage: React.FC = () => {
         type: apiType,
         startTime,
         endTime,
-      });
+      }, targetNumber);
 
-      // 지오펜스 목록 새로고침
-      const updatedGeofences = await geofenceService.getList();
-      setGeofences(updatedGeofences);
+      // LocationContext의 지오펜스 목록 새로고침
+      await loadGeofences();
 
       Alert.alert('성공', `${data.name} 영역이 추가되었습니다.`);
       console.log('새로운 안전 영역 추가 성공');
@@ -324,9 +223,15 @@ const MainPage: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await geofenceService.delete({ id: geofenceId });
-              const updatedGeofences = await geofenceService.getList();
-              setGeofences(updatedGeofences);
+              const targetNumber = userRole === 'supporter' && Global.TARGET_NUMBER
+                ? Global.TARGET_NUMBER
+                : undefined;
+
+              await geofenceService.delete({ id: geofenceId }, targetNumber);
+
+              // LocationContext의 지오펜스 목록 새로고침
+              await loadGeofences();
+
               Alert.alert('성공', '지오펜스가 삭제되었습니다.');
               console.log('지오펜스 삭제 성공:', geofenceId);
             } catch (error) {
@@ -366,21 +271,52 @@ const MainPage: React.FC = () => {
 
   const userLocation = getCurrentDisplayLocation();
 
+  const getSupporterDisplayLabel = () => {
+    const relation = (Global.TARGET_RELATION || '').trim();
+    if (relation) {
+      return relation;
+    }
+    if (Global.TARGET_NUMBER) {
+      return Global.TARGET_NUMBER;
+    }
+    return '이용자';
+  };
+
+  const supporterDisplayLabel = getSupporterDisplayLabel();
+
+  const formatRelativeTime = (diffMs: number) => {
+    const diffMinutes = Math.floor(diffMs / 60000);
+    if (diffMinutes < 1) {
+      return '방금 전';
+    }
+    if (diffMinutes < 60) {
+      return `약 ${diffMinutes}분 전`;
+    }
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) {
+      return `약 ${diffHours}시간 전`;
+    }
+    const diffDays = Math.floor(diffHours / 24);
+    return `약 ${diffDays}일 전`;
+  };
+
   const getLocationFreshnessMessage = () => {
     const location = userRole === 'supporter' ? targetLocation : currentLocation;
     if (!location?.timestamp) return null;
 
-    const now = Date.now();
-    const diffMs = now - location.timestamp;
+    const diffMs = Date.now() - location.timestamp;
     if (diffMs < 0) return null;
 
-    const diffMinutes = Math.floor(diffMs / 60000);
-
-    if (diffMinutes <= 10) {
-      return '사용자의 현 위치입니다.';
+    if (diffMs < 60000) {
+      return userRole === 'supporter'
+        ? `${supporterDisplayLabel}의 위치는 방금 전 업데이트되었습니다.`
+        : '내 위치는 방금 전 업데이트되었습니다.';
     }
 
-    return `마지막으로 확인된 위치: 약 ${diffMinutes}분 전`;
+    const relative = formatRelativeTime(diffMs);
+    return userRole === 'supporter'
+      ? `마지막으로 확인된 ${supporterDisplayLabel}의 위치: ${relative}`
+      : `마지막으로 확인된 위치: ${relative}`;
   };
 
   const locationFreshnessMessage = getLocationFreshnessMessage();
@@ -458,16 +394,22 @@ const MainPage: React.FC = () => {
 
 
 
-  const headerText = userRole === 'user' ? '내 위치' : '이용자 위치';
+  const headerText = userRole === 'user'
+    ? '내 위치'
+    : Global.TARGET_NUMBER
+      ? `${supporterDisplayLabel}의 위치`
+      : '이용자 위치';
   const baseHeaderSubText = userRole === 'user'
     ? (isTracking
         ? `GPS 데이터 수집 중${isWebSocketConnected ? ' • 서버 연결됨' : ' • 서버 연결 안됨'}`
         : 'GPS 미작동 중')
-    : (isWebSocketConnected && targetLocation
-        ? '선택한 이용자의 위치를 표시합니다.'
-        : isWebSocketConnected
-          ? '이용자 위치 대기 중...'
-          : '서버 연결 안됨');
+    : (!Global.TARGET_NUMBER
+        ? '추적할 이용자를 선택해주세요.'
+        : !isWebSocketConnected
+          ? `${supporterDisplayLabel}의 위치 정보를 받지 못하고 있습니다.`
+          : targetLocation
+            ? `${supporterDisplayLabel}의 위치를 지도에 표시하고 있습니다.`
+            : `${supporterDisplayLabel}의 위치 데이터를 수신하는 중입니다...`);
 
   const headerSubText = locationFreshnessMessage
     ? `${baseHeaderSubText}\n${locationFreshnessMessage}`
@@ -547,7 +489,7 @@ const MainPage: React.FC = () => {
       {/* Header (상단에 오버레이) */}
       <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0 }} edges={['top']}>
         <View className="p-3">
-          <View 
+          <View
             className="border border-green-400 rounded-xl p-3 bg-white/90 shadow-md"
             style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
           >

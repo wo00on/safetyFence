@@ -3,6 +3,7 @@
  * - URL: API 서버 주소
  * - NUMBER: 현재 사용자 전화번호
  * - TARGET_NUMBER: 보호자가 선택한 이용자 전화번호
+ * - TARGET_RELATION: 보호자와 이용자 관계
  * - USER_ROLE: 사용자 역할 (user | supporter)
  */
 const Global = {
@@ -12,6 +13,7 @@ const Global = {
   // 사용자 정보
   NUMBER: "",
   TARGET_NUMBER: "",
+  TARGET_RELATION: "",
   USER_ROLE: "",
 };
 

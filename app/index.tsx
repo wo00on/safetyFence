@@ -1,4 +1,3 @@
-import '../src/tasks/locationTask';
 import Global from '@/constants/Global';
 import { authService } from '../services/authService';
 import { useLocation } from '@/contexts/LocationContext';
@@ -54,7 +53,7 @@ const LoginPage: React.FC = () => {
       await storage.setLoginInfo(response.apiKey, response.number, response.name);
 
       // 기존 연결이 있다면 정리하고 역할 선택 화면으로 이동
-      disconnectWebSocket();
+      await disconnectWebSocket();
       navigation.navigate('SelectRole' as never);
     } catch (error: any) {
       const message = error.response?.data?.message || '로그인에 실패했습니다. 다시 시도해주세요.';

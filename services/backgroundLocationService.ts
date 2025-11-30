@@ -7,9 +7,8 @@
 
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
-import { websocketService } from './websocketService';
 import { storage } from '../utils/storage';
-import Global from '@/constants/Global';
+import { sendLocationUpdate } from './locationTransport';
 
 // 백그라운드 위치 작업 이름
 export const BACKGROUND_LOCATION_TASK = 'background-location-task';
@@ -24,74 +23,36 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }: any) =>
     return;
   }
 
-  if (data) {
-    const { locations } = data;
+  if (!data) return;
 
-    if (locations && locations.length > 0) {
-      const location = locations[0];
-      console.log('📍 백그라운드 위치 수신:', {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        timestamp: location.timestamp,
-      });
+  const { locations } = data;
+  if (!locations?.length) return;
 
-      // AsyncStorage에서 사용자 정보 읽기 (백그라운드에서도 안전하게 접근)
-      try {
-        const [userRole, userNumber] = await Promise.all([
-          storage.getUserRole(),
-          storage.getUserNumber(),
-        ]);
+  const location = locations[0];
+  console.log('📍 백그라운드 위치 수신:', {
+    latitude: location.coords.latitude,
+    longitude: location.coords.longitude,
+    timestamp: location.timestamp,
+  });
 
-        // 사용자 역할이 'user'일 때만 위치 전송
-        if (userRole === 'user' && userNumber) {
-          const isWebSocketConnected = websocketService.isConnected();
-          console.log(`📡 백그라운드: WebSocket 연결 상태 = ${isWebSocketConnected}`);
-
-          // WebSocket이 연결되어 있으면 WebSocket으로 전송
-          if (isWebSocketConnected) {
-            try {
-              websocketService.sendLocation({
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-                timestamp: location.timestamp,
-              });
-              console.log('✅ 백그라운드 위치 전송 성공 (WebSocket)');
-            } catch (error) {
-              console.error('❌ 백그라운드 위치 전송 실패 (WebSocket):', error);
-            }
-          } else {
-            // WebSocket이 연결되어 있지 않으면 HTTP POST로 전송 (fallback)
-            console.log('⚠️ 백그라운드: WebSocket 연결 없음, HTTP로 전송');
-            try {
-              const response = await fetch(`${Global.URL}/location`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  userNumber: userNumber,
-                  latitude: location.coords.latitude,
-                  longitude: location.coords.longitude,
-                  timestamp: location.timestamp,
-                }),
-              });
-
-              if (response.ok) {
-                console.log('✅ 백그라운드 위치 전송 성공 (HTTP)');
-              } else {
-                console.error('❌ 백그라운드 위치 전송 실패 (HTTP):', response.status);
-              }
-            } catch (error) {
-              console.error('❌ 백그라운드 위치 전송 실패 (HTTP):', error);
-            }
-          }
-        } else {
-          console.log('ℹ️ 백그라운드: 이용자가 아니거나 로그인 정보 없음');
-        }
-      } catch (error) {
-        console.error('❌ 백그라운드: 사용자 정보 읽기 실패:', error);
-      }
+  try {
+    const userRole = await storage.getUserRole();
+    if (userRole !== 'user') {
+      console.log('ℹ️ 백그라운드: 이용자가 아니어서 위치 전송 생략');
+      return;
     }
+
+    const result = await sendLocationUpdate({
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+      timestamp: location.timestamp,
+    });
+
+    if (!result.ok) {
+      console.warn('⚠️ 백그라운드 위치 전송 실패:', result.reason);
+    }
+  } catch (err) {
+    console.error('❌ 백그라운드 위치 전송 처리 중 오류:', err);
   }
 });
 
@@ -129,8 +90,16 @@ export const startBackgroundLocationTracking = async (): Promise<boolean> => {
 
     console.log('✅ 백그라운드 위치 추적 시작');
     return true;
-  } catch (error) {
-    console.error('❌ 백그라운드 위치 추적 시작 실패:', error);
+  } catch (error: any) {
+    // Expo Go 제한사항: 백그라운드 위치 추적 불가능
+    // Development Build에서는 정상 작동
+    const isExpoGoLimitation = error?.message?.includes('Foreground service cannot be started');
+    if (isExpoGoLimitation) {
+      // Expo Go 제한사항은 조용히 처리 (예상된 동작)
+      return false;
+    }
+    // 다른 에러는 실제 문제일 수 있으므로 로그
+    console.warn('⚠️ 백그라운드 위치 추적 시작 실패:', error?.message || error);
     return false;
   }
 };
