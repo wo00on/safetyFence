@@ -268,6 +268,15 @@ const MainPage: React.FC = () => {
 
   const userLocation = getCurrentDisplayLocation();
 
+  useEffect(() => {
+    if (!userLocation) {
+      return;
+    }
+    setTracksViewChanges(true);
+    const timeout = setTimeout(() => setTracksViewChanges(false), 600);
+    return () => clearTimeout(timeout);
+  }, [userLocation]);
+
   const getSupporterDisplayLabel = () => {
     const relation = (Global.TARGET_RELATION || '').trim();
     if (relation) {
@@ -420,14 +429,20 @@ const MainPage: React.FC = () => {
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
-        // style={{ flex: 1 }}
-        style={{ flex: 1 }}
+        style={StyleSheet.absoluteFillObject}
         region={region}
         customMapStyle={customMapStyle}
         showsCompass={false}
         showsUserLocation={false}
         showsMyLocationButton={false}
         toolbarEnabled={false}
+        loadingEnabled={true}
+        loadingIndicatorColor="#22c55e"
+        moveOnMarkerPress={false}
+        zoomEnabled={true}
+        scrollEnabled={true}
+        pitchEnabled={false}
+        rotateEnabled={false}
       >
         {userLocation && (
           <Marker
@@ -436,17 +451,17 @@ const MainPage: React.FC = () => {
               longitude: userLocation.lng,
             }}
             anchor={{ x: 0.5, y: 1 }}
-            tracksViewChanges
+            tracksViewChanges={tracksViewChanges}
           >
-            <View style={{ alignItems: 'center', paddingTop: 20 }}>
+            <View
+              style={styles.markerWrapper}
+              collapsable={false}
+              pointerEvents="none"
+            >
               <Animated.View style={animatedStyle}>
                 <Image
                   source={require('../assets/images/mappin1.png')}
-                  style={{
-                    width: 60,
-                    height: 60,
-                    resizeMode: 'contain',
-                  }}
+                  style={styles.markerImage}
                 />
               </Animated.View>
               <Animated.View style={[styles.shadow, shadowAnimatedStyle]} />
@@ -545,6 +560,18 @@ const styles = StyleSheet.create({
   },
   fabSecondary: {
     backgroundColor: '#04faacff',
+  },
+  markerWrapper: {
+    width: 96,
+    height: 96,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    backgroundColor: 'transparent',
+  },
+  markerImage: {
+    width: 80,
+    height: 80,
+    resizeMode: 'contain',
   },
   shadow: {
     backgroundColor: 'rgba(0,0,0,0.3)', // Darker shadow
