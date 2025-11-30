@@ -1,95 +1,77 @@
 // constants/customMapStyle.ts
 export const customMapStyle = [
-  // 1. 기본 랜드 색상: 흰색 (배경)
+  // Base land color (light gray for buildings/background)
   {
     featureType: 'all',
     elementType: 'geometry',
-    stylers: [{ color: '#ffffff' }],
+    stylers: [{ color: '#f5f5f5' }],
   },
-  // 2. 기본 라벨 색상: 어두운 회색
-  {
-    featureType: 'all',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#ad4c4cff' }],
-  },
-  {
-    featureType: 'all',
-    elementType: 'labels.text.stroke',
-    stylers: [{ color: '#ffffff' }], // 랜드 색상과 동일하게
-  },
-  {
-    featureType: 'administrative.land_parcel',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#757575' }],
-  },
-  // 3. POI (관심 장소) 색상
-  {
-    featureType: 'poi',
-    elementType: 'geometry',
-    stylers: [{ color: '#312020ff' }],
-  },
-  {
-    featureType: 'poi',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#512f2fff' }],
-  },
-  // 4. 공원(Park) 색상
-  {
-    featureType: 'poi.park',
-    elementType: 'geometry',
-    stylers: [{ color: '#e6f4e7' }], // 연한 녹색 배경
-  },
-  {
-    featureType: 'poi.park',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#2e7d32' }], // 진한 녹색 텍스트
-  },
-  // 5. 도로 색상
+  // Roads - Very light green
   {
     featureType: 'road',
     elementType: 'geometry',
-    stylers: [{ color: '#100f0fff' }], // 모든 도로 기본 흰색
+    stylers: [{ color: '#e6f9e6' }], // A slightly different light green for better contrast
   },
-  {
-    featureType: 'road.arterial',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#757575' }],
-  },
+  // Make highways blend with other roads
   {
     featureType: 'road.highway',
     elementType: 'geometry',
-    stylers: [{ color: '#ffffff' }], // 고속도로도 흰색
+    stylers: [{ color: '#e6f9e6' }],
   },
+  // Water - Soft blue
   {
-    featureType: 'road.highway',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#8d6e6eff' }],
+    featureType: 'water',
+    elementType: 'geometry',
+    stylers: [{ color: '#d4eefc' }],
   },
+  // Parks - A noticeable but soft green
   {
-    featureType: 'road.local',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#333333' }],
+    featureType: 'poi.park',
+    elementType: 'geometry',
+    stylers: [{ color: '#dcf0dc' }],
   },
-  // 6. 대중교통 라인
+  // POIs - Muted and subtle
+  {
+    featureType: 'poi',
+    elementType: 'geometry',
+    stylers: [{ color: '#eeeeee' }],
+  },
+  // Transit - Subtle
   {
     featureType: 'transit.line',
     elementType: 'geometry',
-    stylers: [{ color: '#e5e5e5ff' }],
+    stylers: [{ color: '#e5e5e5' }],
   },
   {
     featureType: 'transit.station',
     elementType: 'geometry',
     stylers: [{ color: '#eeeeee' }],
   },
-  // 7. 물(Water) 색상
+  // --- LABELS ---
+  // Universal label color - NOW BLACK
   {
-    featureType: 'water',
-    elementType: 'geometry',
-    stylers: [{ color: '#0099feff' }], // 연한 파란색 배경
+    featureType: 'all',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#000000' }], // ALL TEXT BLACK
+  },
+  // Universal label stroke - makes text more readable
+  {
+    featureType: 'all',
+    elementType: 'labels.text.stroke',
+    stylers: [
+      { color: '#f5f5f5' }, // Same as background
+      { weight: 2 },
+    ],
+  },
+  // Specific label overrides if needed - keep existing overrides but change to black
+  {
+    featureType: 'poi.park',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#000000' }], // Parks text black
   },
   {
     featureType: 'water',
     elementType: 'labels.text.fill',
-    stylers: [{ color: '#000000ff' }], // 파란색 텍스트
+    stylers: [{ color: '#000000' }], // Water text black
   },
 ];
