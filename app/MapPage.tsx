@@ -1,12 +1,9 @@
-import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import Global from '@/constants/Global';
 import { customMapStyle } from '@/styles/MapPageStyles';
-import { useRouter } from 'expo-router'; // useRouter 임포트
+import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { useLocation } from '../contexts/LocationContext';
 import { geofenceService } from '../services/geofenceService';
-import type { GeofenceItem } from '../types/api';
 
 import {
   MapPin, // FAB 버튼용 MapPin은 유지
