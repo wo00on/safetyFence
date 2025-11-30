@@ -164,8 +164,8 @@ class WebSocketService {
           }
         },
         onStompError: (frame) => {
-          console.log('❌ STOMP 에러:', frame.headers['message']);
-          console.log('에러 상세:', frame.body);
+          console.error('❌ STOMP 에러:', frame.headers['message']);
+          console.error('에러 상세:', frame.body);
           this.connectionCallback?.(false);
         },
         onWebSocketError: (event) => {

@@ -1,6 +1,5 @@
 import Global from '@/constants/Global';
 import { Image } from "react-native";
-
 import { useNavigation } from '@react-navigation/native';
 import {
   ChevronDown,
@@ -13,7 +12,7 @@ import {
   Trash2,
   User
 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -100,6 +99,20 @@ const MyPage: React.FC = () => {
   const handlePasswordChange = async () => {
     Alert.alert('알림', '추후 추가될 예정입니다.');
     setIsPasswordModalOpen(false);
+  };
+
+  const formatDateTime = (value: string | null) => {
+    if (!value) return '';
+    const normalized = value.replace(' ', 'T');
+    const date = new Date(normalized.endsWith('Z') ? normalized : `${normalized}Z`);
+    if (isNaN(date.getTime())) {
+      return value;
+    }
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${month}-${day} ${hours}:${minutes}`;
   };
 
   const handleLogout = () => {
@@ -332,7 +345,7 @@ const MyPage: React.FC = () => {
 
                           {geofence.type === 1 && geofence.startTime && geofence.endTime && (
                             <Text className="text-xs text-gray-500 mt-1">
-                              시간: {geofence.startTime} - {geofence.endTime}
+                              시간: {formatDateTime(geofence.startTime)} - {formatDateTime(geofence.endTime)}
                             </Text>
                           )}
                         </View>

@@ -84,6 +84,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
   const [targetLocation, setTargetLocation] = useState<RealTimeLocation | null>(null);
   const [geofences, setGeofences] = useState<GeofenceItem[]>([]);
   const [lastGeofenceCheck, setLastGeofenceCheck] = useState<{ [key: number]: boolean }>({});
+  const lastGeofenceCheckRef = useRef<{ [key: number]: boolean }>({});
 
   const locationSubscription = useRef<Location.LocationSubscription | null>(null);
   const websocketSendInterval = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -113,6 +114,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
     // State 업데이트
     setCurrentLocation(realTimeLocation);
     setLocationHistory(prev => [...prev.slice(-19), realTimeLocation]);
+    currentLocationRef.current = realTimeLocation;
 
     console.log('📍 위치 업데이트 (포그라운드):', realTimeLocation);
 
@@ -661,27 +663,27 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
       const currentLat = location.latitude;
       const currentLng = location.longitude;
       const now = new Date();
-      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-      // 시간 체크 헬퍼 함수
+      const parseDateTime = (value: string | null): Date | null => {
+        if (!value) return null;
+        const normalized = value.replace(' ', 'T').replace(/\.\d+$/, '');
+        const parsed = new Date(normalized);
+        return isNaN(parsed.getTime()) ? null : parsed;
+      };
+
+      // 시간 체크 헬퍼 함수 (시작·종료 날짜/시간 모두 고려)
       const isWithinTimeRange = (startTime: string | null, endTime: string | null): boolean => {
         if (!startTime || !endTime) return true; // 시간 미설정 시 항상 활성
 
-        const [currentHour, currentMin] = currentTime.split(':').map(Number);
-        const [startHour, startMin] = startTime.split(':').map(Number);
-        const [endHour, endMin] = endTime.split(':').map(Number);
+        const start = parseDateTime(startTime);
+        const end = parseDateTime(endTime);
 
-        const currentMinutes = currentHour * 60 + currentMin;
-        const startMinutes = startHour * 60 + startMin;
-        const endMinutes = endHour * 60 + endMin;
-
-        // 자정을 넘는 경우 (예: 23:00 ~ 02:00)
-        if (startMinutes > endMinutes) {
-          return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+        if (!start || !end) {
+          // 파싱 실패 시 시간 조건을 무시하고 활성 처리
+          return true;
         }
 
-        // 일반 케이스 (예: 14:00 ~ 18:00)
-        return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+        return now >= start && now <= end;
       };
 
       for (const fence of geofences) {
@@ -697,21 +699,26 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
         const canEnter = isInside && isTimeActive;
 
         // 진입 감지: 이전에 밖에 있었는데 지금 안에 들어옴
-        if (canEnter && !lastGeofenceCheck[fence.id]) {
+        if (canEnter && !lastGeofenceCheckRef.current[fence.id]) {
           try {
             await geofenceService.recordEntry({ geofenceId: fence.id });
             console.log(`✅ 지오펜스 진입 기록: ${fence.name} (${fence.type === 0 ? '영구' : `일시 ${fence.startTime}-${fence.endTime}`})`);
-            setLastGeofenceCheck(prev => ({ ...prev, [fence.id]: true }));
+    setLastGeofenceCheck(prev => {
+      const updated = { ...prev, [fence.id]: true };
+      lastGeofenceCheckRef.current = updated;
+      return updated;
+    });
           } catch (error) {
             console.error('❌ 지오펜스 진입 기록 실패:', error);
           }
         }
         // 이탈 감지: 영구 지오펜스만 이탈 추적 (일시적 지오펜스는 진입 후 사라짐)
-        else if (fence.type === 0 && (!canEnter) && lastGeofenceCheck[fence.id]) {
+        else if (fence.type === 0 && (!canEnter) && lastGeofenceCheckRef.current[fence.id]) {
           console.log(`🚪 영구 지오펜스 이탈: ${fence.name}`);
           setLastGeofenceCheck(prev => {
             const updated = { ...prev };
             delete updated[fence.id];
+            lastGeofenceCheckRef.current = updated;
             return updated;
           });
         }
