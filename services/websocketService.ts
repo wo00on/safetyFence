@@ -31,6 +31,7 @@ class WebSocketService {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 3000;
+  private _isConnected = false;  // 연결 상태 플래그
 
   /**
    * WebSocket 연결
@@ -144,11 +145,13 @@ class WebSocketService {
         },
         onConnect: () => {
           console.log('✅ WebSocket 연결 성공');
+          this._isConnected = true;  // 연결 상태 업데이트
           this.reconnectAttempts = 0;
           this.connectionCallback?.(true);
         },
         onDisconnect: () => {
           console.log('❌ WebSocket 연결 해제');
+          this._isConnected = false;  // 연결 상태 업데이트
           this.connectionCallback?.(false);
 
           // 자동 재연결
@@ -170,7 +173,7 @@ class WebSocketService {
           this.connectionCallback?.(false);
         },
         onWebSocketClose: (event) => {
-          console.error('🔌 WebSocket close 이벤트 발생', {
+          console.info('🔌 WebSocket close 이벤트 발생', {
             code: event.code,
             reason: event.reason,
             wasClean: event.wasClean,
@@ -197,7 +200,7 @@ class WebSocketService {
   /**
    * WebSocket 연결 해제
    */
-  disconnect(): void {
+  async disconnect(): Promise<void> {
     if (this.client) {
       console.log('WebSocket 연결 해제 중...');
 
@@ -208,11 +211,14 @@ class WebSocketService {
       this.subscriptions.clear();
       this.locationCallbacks.clear();
 
-      // 클라이언트 비활성화
-      this.client.deactivate();
+      // 연결 상태 업데이트
+      this._isConnected = false;
+
+      // 클라이언트 비활성화 (await 추가)
+      await this.client.deactivate();
       this.client = null;
       this.connectionCallback?.(false);
-      
+
     }
   }
 
@@ -250,7 +256,7 @@ class WebSocketService {
    * @param callback 위치 업데이트 콜백
    */
   subscribeToUserLocation(targetUserNumber: string, callback: LocationCallback): void {
-    if (!this.client?.connected) {
+    if (!this._isConnected) {
       console.warn('WebSocket이 연결되지 않음 - 구독 불가');
       return;
     }
@@ -262,6 +268,11 @@ class WebSocketService {
     }
 
     try {
+      if (!this.client) {
+        console.warn('WebSocket 클라이언트가 없음');
+        return;
+      }
+
       const destination = `/topic/location/${targetUserNumber}`;
 
       const subscription = this.client.subscribe(destination, (message: IMessage) => {
