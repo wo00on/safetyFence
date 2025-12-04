@@ -370,7 +370,7 @@ const MainPage: React.FC = () => {
           <React.Fragment key={fence.id}>
             <Circle
               center={{ latitude: fence.latitude, longitude: fence.longitude }}
-              radius={200}
+              radius={100}
               strokeColor="rgba(37, 235, 103, 0.5)"
               strokeWidth={2}
               fillColor="rgba(37, 235, 103, 0.15)"

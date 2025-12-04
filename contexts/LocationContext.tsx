@@ -18,16 +18,16 @@
  * 📚 참고: https://docs.expo.dev/versions/latest/sdk/location/
  */
 
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from 'react';
-import * as Location from 'expo-location';
-import { Alert, AppState, AppStateStatus, Linking } from 'react-native';
-import { Accelerometer } from 'expo-sensors';
-import { websocketService } from '../services/websocketService';
-import { startBackgroundLocationTracking, stopBackgroundLocationTracking } from '../services/backgroundLocationService';
-import { sendLocationUpdate } from '../services/locationTransport';
-import { geofenceService } from '../services/geofenceService';
-import type { GeofenceItem } from '../types/api';
 import Global from '@/constants/Global';
+import * as Location from 'expo-location';
+import { Accelerometer } from 'expo-sensors';
+import React, { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { Alert, AppState, AppStateStatus, Linking } from 'react-native';
+import { startBackgroundLocationTracking, stopBackgroundLocationTracking } from '../services/backgroundLocationService';
+import { geofenceService } from '../services/geofenceService';
+import { sendLocationUpdate } from '../services/locationTransport';
+import { websocketService } from '../services/websocketService';
+import type { GeofenceItem } from '../types/api';
 
 // 위치 데이터 타입
 export interface RealTimeLocation {
@@ -710,7 +710,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
       for (const fence of geofences) {
         // 1. 거리 체크
         const distance = calculateDistance(currentLat, currentLng, fence.latitude, fence.longitude);
-        const radius = 200; // 기본 반경 200미터
+        const radius = 100; // 기본 반경 200미터
         const isInside = distance <= radius;
 
         // 2. 시간 체크 (일시적 지오펜스만)
