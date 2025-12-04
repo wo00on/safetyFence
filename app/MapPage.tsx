@@ -1,5 +1,4 @@
 import Global from '@/constants/Global';
-import { customMapStyle } from '@/styles/MapPageStyles';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useLocation } from '../contexts/LocationContext';
@@ -20,12 +19,10 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import MapView, { Circle, Marker, PROVIDER_GOOGLE } from 'react-native-maps'; // Callout 추가
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomNavigation from '../components/BottomNavigation';
 import GeofenceModal from '../components/GeofenceModal';
-
-import CustomMarker from '../components/CustomMarker';
+import KakaoMap, { KakaoMapHandle } from '../components/KakaoMap';
 
 interface RealTimeLocation {
   latitude: number;
@@ -35,13 +32,7 @@ interface RealTimeLocation {
   speed?: number;
   heading?: number;
 }
-interface LocationTrackingState {
-  isTracking: boolean;
-  currentLocation: RealTimeLocation | null;
-  locationHistory: RealTimeLocation[];
-  error: string | null;
-  isLoading: boolean;
-}
+
 interface UserLocation {
   lat: number;
   lng: number;
@@ -63,18 +54,13 @@ const MainPage: React.FC = () => {
   } = useLocation();
 
   const router = useRouter();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<KakaoMapHandle>(null);
 
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [isGeofenceModalVisible, setIsGeofenceModalVisible] = useState(false);
 
   const moveToLocation = useCallback((location: RealTimeLocation) => {
-    mapRef.current?.animateToRegion({
-      latitude: location.latitude,
-      longitude: location.longitude,
-      latitudeDelta: 0.0005,
-      longitudeDelta: 0.0005,
-    }, 1000);
+    mapRef.current?.moveToLocation(location.latitude, location.longitude);
   }, []);
 
   useEffect(() => {
@@ -86,9 +72,8 @@ const MainPage: React.FC = () => {
 
     if (currentLocation) {
       console.log('📍 MapPage - 초기 위치로 지도 이동');
-      moveToLocation(currentLocation);
     }
-  }, [currentLocation, moveToLocation]);
+  }, [currentLocation]);
 
   useFocusEffect(
     useCallback(() => {
@@ -229,7 +214,7 @@ const MainPage: React.FC = () => {
     return `약 ${diffDays}일 전`;
   };
 
-  const getLocationFreshnessMessage = () => {
+  const getLocationFreshnessMessage = (): string | null => {
     const location = userRole === 'supporter' ? targetLocation : currentLocation;
     if (!location?.timestamp) return null;
 
@@ -291,13 +276,6 @@ const MainPage: React.FC = () => {
     );
   }
 
-  const region = {
-    latitude: userLocation.lat,
-    longitude: userLocation.lng,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
-  };
-
   const FloatingButtons: React.FC = () => (
     <View style={styles.fabContainer} pointerEvents="box-none">
       <TouchableOpacity
@@ -345,46 +323,14 @@ const MainPage: React.FC = () => {
     <View className="flex-1 bg-green-50">
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
 
-      <MapView
+      <KakaoMap
         ref={mapRef}
-        provider={PROVIDER_GOOGLE}
-        style={{ flex: 1 }}
-        region={region}
-        customMapStyle={customMapStyle}
-        showsCompass={false}
-        showsUserLocation={false}
-        showsMyLocationButton={false}
-        toolbarEnabled={false}
-      >
-        {userLocation && (
-          <CustomMarker
-            coordinate={{
-              latitude: userLocation.lat,
-              longitude: userLocation.lng,
-            }}
-            name={userLocation.name}
-            status={userLocation.status}
-          />
-        )}
-        {geofences.map((fence) => (
-          <React.Fragment key={fence.id}>
-            <Circle
-              center={{ latitude: fence.latitude, longitude: fence.longitude }}
-              radius={200}
-              strokeColor="rgba(37, 235, 103, 0.5)"
-              strokeWidth={2}
-              fillColor="rgba(37, 235, 103, 0.15)"
-            />
-            <Marker
-              coordinate={{ latitude: fence.latitude, longitude: fence.longitude }}
-              title={fence.name}
-              description={`${fence.address} (${fence.type === 0 ? '영구' : '일시적'})`}
-              pinColor={fence.type === 0 ? '#8fffb4ff' : '#04faac'}
-              onCalloutPress={() => handleGeofenceDelete(fence.id, fence.name)}
-            />
-          </React.Fragment>
-        ))}
-      </MapView>
+        currentLocation={currentLocation}
+        targetLocation={targetLocation}
+        geofences={geofences}
+        userRole={userRole}
+        onGeofenceDelete={handleGeofenceDelete}
+      />
 
       <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0 }} edges={['top']}>
         <View className="p-3">
