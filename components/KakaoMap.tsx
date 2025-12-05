@@ -226,12 +226,12 @@ const HTML_CONTENT = `
           marker.setMap(map);
           geofenceMarkers.push(marker);
 
-          kakao.maps.event.addListener(marker, 'click', function() {
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'GEOFENCE_CLICK',
-              payload: { id: gf.id, name: gf.name }
-            }));
-          });
+          // kakao.maps.event.addListener(marker, 'click', function() {
+          //   window.ReactNativeWebView.postMessage(JSON.stringify({
+          //     type: 'GEOFENCE_CLICK',
+          //     payload: { id: gf.id, name: gf.name }
+          //   }));
+          // });
         });
       }
 
