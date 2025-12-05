@@ -7,15 +7,12 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "android": {
-        "googleServicesFile": "./google-services.json"
-      }
+      "android": {}
     },
     "preview": {
       "distribution": "internal",
       "android": {
-        "buildType": "apk",
-        "googleServicesFile": "./google-services.json"
+        "buildType": "apk"
       },
       "ios": {
         "simulator": false
@@ -23,9 +20,7 @@
     },
     "production": {
       "autoIncrement": true,
-      "android": {
-        "googleServicesFile": "./google-services.json"
-      }
+      "android": {}
     }
   },
   "submit": {
