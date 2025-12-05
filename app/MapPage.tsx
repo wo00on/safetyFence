@@ -1,24 +1,10 @@
 import Global from '@/constants/Global';
 import { useFocusEffect } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
 import { useLocation } from '../contexts/LocationContext';
 import { geofenceService } from '../services/geofenceService';
-
-import {
-  MapPin,
-  Plus,
-} from 'lucide-react-native';
+import { MapPin, Plus } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Alert,
-  Linking,
-  Platform,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
-} from 'react-native';
+import { Alert, Linking, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomNavigation from '../components/BottomNavigation';
 import GeofenceModal from '../components/GeofenceModal';
@@ -53,13 +39,11 @@ const MainPage: React.FC = () => {
     loadGeofences,
   } = useLocation();
 
-  const router = useRouter();
   const mapRef = useRef<KakaoMapHandle>(null);
 
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [isGeofenceModalVisible, setIsGeofenceModalVisible] = useState(false);
   const hasMovedToInitialLocation = useRef(false);
-  const [initialRegion, setInitialRegion] = useState<Region | null>(null);
 
   const moveToLocation = useCallback((location: RealTimeLocation) => {
     mapRef.current?.moveToLocation(location.latitude, location.longitude);
@@ -201,18 +185,6 @@ const MainPage: React.FC = () => {
   };
 
   const userLocation = getCurrentDisplayLocation();
-
-  // 지도 초기 위치를 한 번만 설정 (제어형 region 대신 initialRegion 사용)
-  useEffect(() => {
-    if (!initialRegion && userLocation) {
-      setInitialRegion({
-        latitude: userLocation.lat,
-        longitude: userLocation.lng,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      });
-    }
-  }, [initialRegion, userLocation]);
 
   const getSupporterDisplayLabel = () => {
     const relation = (Global.TARGET_RELATION || '').trim();
@@ -357,53 +329,9 @@ const MainPage: React.FC = () => {
         currentLocation={currentLocation}
         targetLocation={targetLocation}
         geofences={geofences}
-        userRole={userRole} 
+        userRole={userRole}
         onGeofenceDelete={handleGeofenceDelete}
       />
-        provider={PROVIDER_GOOGLE}
-        style={{ flex: 1 }}
-        initialRegion={
-          initialRegion || {
-            latitude: userLocation.lat,
-            longitude: userLocation.lng,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          }
-        }
-        customMapStyle={customMapStyle}
-        showsCompass={false}
-        showsUserLocation={false}
-        showsMyLocationButton={false}
-        toolbarEnabled={false}
-      >
-        {userLocation && (
-          <CustomMarker
-            coordinate={{
-              latitude: userLocation.lat,
-              longitude: userLocation.lng,
-            }}
-            name={userLocation.name}
-            status={userLocation.status}
-          />
-        )}
-        {geofences.map((fence) => (
-          <React.Fragment key={fence.id}>
-            <Circle
-              center={{ latitude: fence.latitude, longitude: fence.longitude }}
-              radius={100}
-              strokeColor="rgba(37, 235, 103, 0.5)"
-              strokeWidth={2}
-              fillColor="rgba(37, 235, 103, 0.15)"
-            />
-            <Marker
-              coordinate={{ latitude: fence.latitude, longitude: fence.longitude }}
-              title={fence.name}
-              description={`${fence.address} (${fence.type === 0 ? '영구' : '일시적'})`}
-              pinColor={fence.type === 0 ? '#8fffb4ff' : '#04faac'}
-            />
-          </React.Fragment>
-        ))}
-      </MapView>
 
       <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0 }} edges={['top']}>
         <View className="p-3">
