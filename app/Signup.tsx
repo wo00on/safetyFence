@@ -1,5 +1,7 @@
 import Global from '@/constants/Global';
 import { authService } from '../services/authService';
+import { initializeNotifications } from '../services/notificationService';
+import { storage } from '../utils/storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { Calendar, Check, MapPin, Search, X } from 'lucide-react-native';
@@ -205,6 +207,11 @@ const SignupPage: React.FC = () => {
 
       // Global 상태 업데이트
       Global.NUMBER = response.number;
+      await storage.setUserNumber(response.number);
+      await storage.setUserName(response.name);
+
+      // 가입 직후 알림 토큰 발급 및 서버 등록 시도
+      await initializeNotifications();
 
       // 성공 알림 및 로그인 페이지로 이동
       Alert.alert(

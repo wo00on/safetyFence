@@ -20,7 +20,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import MapView, { Circle, Marker, PROVIDER_GOOGLE } from 'react-native-maps'; // Callout 추가
+import MapView, { Circle, Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps'; // Callout 추가
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomNavigation from '../components/BottomNavigation';
 import GeofenceModal from '../components/GeofenceModal';
@@ -67,6 +67,8 @@ const MainPage: React.FC = () => {
 
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [isGeofenceModalVisible, setIsGeofenceModalVisible] = useState(false);
+  const hasMovedToInitialLocation = useRef(false);
+  const [initialRegion, setInitialRegion] = useState<Region | null>(null);
 
   const moveToLocation = useCallback((location: RealTimeLocation) => {
     mapRef.current?.animateToRegion({
@@ -77,18 +79,28 @@ const MainPage: React.FC = () => {
     }, 1000);
   }, []);
 
+  // 역할 설정은 1회만 (로그 중복 방지)
   useEffect(() => {
     const role = Global.USER_ROLE;
     if (role === 'user' || role === 'supporter') {
       setUserRole(role);
       console.log('📍 MapPage - 사용자 역할:', role);
     }
+  }, []);
 
-    if (currentLocation) {
-      console.log('📍 MapPage - 초기 위치로 지도 이동');
-      moveToLocation(currentLocation);
+  // 초기 위치로 한 번만 이동
+  useEffect(() => {
+    const role = userRole;
+    if (!role || hasMovedToInitialLocation.current) return;
+
+    // 초기 위치로 한 번만 이동 (이후 자동 이동 안 함)
+    const location = role === 'supporter' ? targetLocation : currentLocation;
+    if (location) {
+      console.log('📍 MapPage - 초기 위치로 지도 이동 (1회만)');
+      moveToLocation(location);
+      hasMovedToInitialLocation.current = true;
     }
-  }, [currentLocation, moveToLocation]);
+  }, [currentLocation, targetLocation, moveToLocation, userRole]);
 
   useFocusEffect(
     useCallback(() => {
@@ -99,7 +111,11 @@ const MainPage: React.FC = () => {
   );
 
   const moveToMyLocation = () => {
-    const location = currentLocation || targetLocation;
+    // 역할에 따라 다른 위치로 이동
+    const location = userRole === 'supporter'
+      ? targetLocation      // 보호자: 사용자 위치로
+      : currentLocation;    // 이용자: 자신의 위치로
+
     if (location) {
       moveToLocation(location);
     } else {
@@ -200,6 +216,18 @@ const MainPage: React.FC = () => {
 
   const userLocation = getCurrentDisplayLocation();
 
+  // 지도 초기 위치를 한 번만 설정 (제어형 region 대신 initialRegion 사용)
+  useEffect(() => {
+    if (!initialRegion && userLocation) {
+      setInitialRegion({
+        latitude: userLocation.lat,
+        longitude: userLocation.lng,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
+    }
+  }, [initialRegion, userLocation]);
+
   const getSupporterDisplayLabel = () => {
     const relation = (Global.TARGET_RELATION || '').trim();
     if (relation) {
@@ -291,13 +319,6 @@ const MainPage: React.FC = () => {
     );
   }
 
-  const region = {
-    latitude: userLocation.lat,
-    longitude: userLocation.lng,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
-  };
-
   const FloatingButtons: React.FC = () => (
     <View style={styles.fabContainer} pointerEvents="box-none">
       <TouchableOpacity
@@ -349,7 +370,14 @@ const MainPage: React.FC = () => {
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={{ flex: 1 }}
-        region={region}
+        initialRegion={
+          initialRegion || {
+            latitude: userLocation.lat,
+            longitude: userLocation.lng,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          }
+        }
         customMapStyle={customMapStyle}
         showsCompass={false}
         showsUserLocation={false}
@@ -370,7 +398,7 @@ const MainPage: React.FC = () => {
           <React.Fragment key={fence.id}>
             <Circle
               center={{ latitude: fence.latitude, longitude: fence.longitude }}
-              radius={200}
+              radius={100}
               strokeColor="rgba(37, 235, 103, 0.5)"
               strokeWidth={2}
               fillColor="rgba(37, 235, 103, 0.15)"
@@ -380,7 +408,6 @@ const MainPage: React.FC = () => {
               title={fence.name}
               description={`${fence.address} (${fence.type === 0 ? '영구' : '일시적'})`}
               pinColor={fence.type === 0 ? '#8fffb4ff' : '#04faac'}
-              onCalloutPress={() => handleGeofenceDelete(fence.id, fence.name)}
             />
           </React.Fragment>
         ))}

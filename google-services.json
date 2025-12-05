@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "670304561818",
+    "project_id": "safetyfence-28240",
+    "storage_bucket": "safetyfence-28240.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:670304561818:android:5fd5ead596d532762f8d23",
+        "android_client_info": {
+          "package_name": "com.paypass.safetyfence"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKjF6TpcDCuSCuDg0efn9KoYjVCayOris"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
