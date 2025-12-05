@@ -1,12 +1,13 @@
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
-import { Plus, Trash2 } from 'lucide-react-native';
+import { Plus, Trash2, X } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import {
   Alert,
   Dimensions,
   FlatList,
   Image,
+  Modal,
   SafeAreaView,
   StatusBar,
   Text,
@@ -91,8 +92,14 @@ const GalleryPage: React.FC = () => {
     ]);
   };
 
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
   const renderItem = ({ item }: { item: GalleryPhoto }) => (
-    <View style={{ width: ITEM_SIZE, height: ITEM_SIZE, padding: 1 }}>
+    <TouchableOpacity
+      style={{ width: ITEM_SIZE, height: ITEM_SIZE, padding: 1 }}
+      onPress={() => setSelectedImage(item.uri)}
+      activeOpacity={0.8}
+    >
       <Image source={{ uri: item.uri }} className="w-full h-full" resizeMode="cover" />
       <TouchableOpacity
         className="absolute top-1 right-1 bg-black/50 p-1 rounded-full"
@@ -100,7 +107,7 @@ const GalleryPage: React.FC = () => {
       >
         <Trash2 size={12} color="white" />
       </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -129,6 +136,31 @@ const GalleryPage: React.FC = () => {
           </View>
         }
       />
+
+      {/* 이미지 확대 모달 */}
+      <Modal
+        visible={!!selectedImage}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setSelectedImage(null)}
+      >
+        <View className="flex-1 bg-black justify-center items-center">
+          <TouchableOpacity
+            className="absolute top-12 right-6 z-10 p-2 bg-black/50 rounded-full"
+            onPress={() => setSelectedImage(null)}
+          >
+            <X size={30} color="white" />
+          </TouchableOpacity>
+
+          {selectedImage && (
+            <Image
+              source={{ uri: selectedImage }}
+              className="w-full h-full"
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
 
       <BottomNavigation currentScreen="GalleryPage" />
     </SafeAreaView>
