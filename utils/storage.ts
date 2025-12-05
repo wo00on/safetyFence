@@ -11,6 +11,7 @@ const STORAGE_KEYS = {
   USER_NAME: '@safetyFence:userName',
   USER_ROLE: '@safetyFence:userRole',
   TARGET_NUMBER: '@safetyFence:targetNumber',
+  FCM_TOKEN: '@safetyFence:fcmToken',
 } as const;
 
 export const storage = {
@@ -137,6 +138,7 @@ export const storage = {
         STORAGE_KEYS.USER_NAME,
         STORAGE_KEYS.USER_ROLE,
         STORAGE_KEYS.TARGET_NUMBER,
+        STORAGE_KEYS.FCM_TOKEN,
       ]);
     } catch (error) {
       console.error('저장소 초기화 실패:', error);
@@ -152,6 +154,26 @@ export const storage = {
     } catch (error) {
       console.error('로그인 여부 확인 실패:', error);
       return false;
+    }
+  },
+
+  // 범용 setItem (FCM 토큰 등 추가 데이터 저장용)
+  async setItem(key: string, value: string): Promise<void> {
+    try {
+      await AsyncStorage.setItem(`@safetyFence:${key}`, value);
+    } catch (error) {
+      console.error(`${key} 저장 실패:`, error);
+      throw error;
+    }
+  },
+
+  // 범용 getItem
+  async getItem(key: string): Promise<string | null> {
+    try {
+      return await AsyncStorage.getItem(`@safetyFence:${key}`);
+    } catch (error) {
+      console.error(`${key} 가져오기 실패:`, error);
+      return null;
     }
   },
 };

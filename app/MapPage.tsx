@@ -1,24 +1,10 @@
 import Global from '@/constants/Global';
 import { useFocusEffect } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
 import { useLocation } from '../contexts/LocationContext';
 import { geofenceService } from '../services/geofenceService';
-
-import {
-  MapPin,
-  Plus,
-} from 'lucide-react-native';
+import { MapPin, Plus } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Alert,
-  Linking,
-  Platform,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
-} from 'react-native';
+import { Alert, Linking, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomNavigation from '../components/BottomNavigation';
 import GeofenceModal from '../components/GeofenceModal';
@@ -53,27 +39,38 @@ const MainPage: React.FC = () => {
     loadGeofences,
   } = useLocation();
 
-  const router = useRouter();
   const mapRef = useRef<KakaoMapHandle>(null);
 
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [isGeofenceModalVisible, setIsGeofenceModalVisible] = useState(false);
+  const hasMovedToInitialLocation = useRef(false);
 
   const moveToLocation = useCallback((location: RealTimeLocation) => {
     mapRef.current?.moveToLocation(location.latitude, location.longitude);
   }, []);
 
+  // 역할 설정은 1회만 (로그 중복 방지)
   useEffect(() => {
     const role = Global.USER_ROLE;
     if (role === 'user' || role === 'supporter') {
       setUserRole(role);
       console.log('📍 MapPage - 사용자 역할:', role);
     }
+  }, []);
 
-    if (currentLocation) {
-      console.log('📍 MapPage - 초기 위치로 지도 이동');
+  // 초기 위치로 한 번만 이동
+  useEffect(() => {
+    const role = userRole;
+    if (!role || hasMovedToInitialLocation.current) return;
+
+    // 초기 위치로 한 번만 이동 (이후 자동 이동 안 함)
+    const location = role === 'supporter' ? targetLocation : currentLocation;
+    if (location) {
+      console.log('📍 MapPage - 초기 위치로 지도 이동 (1회만)');
+      moveToLocation(location);
+      hasMovedToInitialLocation.current = true;
     }
-  }, [currentLocation]);
+  }, [currentLocation, targetLocation, moveToLocation, userRole]);
 
   useFocusEffect(
     useCallback(() => {
@@ -84,7 +81,11 @@ const MainPage: React.FC = () => {
   );
 
   const moveToMyLocation = () => {
-    const location = currentLocation || targetLocation;
+    // 역할에 따라 다른 위치로 이동
+    const location = userRole === 'supporter'
+      ? targetLocation      // 보호자: 사용자 위치로
+      : currentLocation;    // 이용자: 자신의 위치로
+
     if (location) {
       moveToLocation(location);
     } else {

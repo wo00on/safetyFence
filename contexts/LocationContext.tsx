@@ -18,16 +18,17 @@
  * 📚 참고: https://docs.expo.dev/versions/latest/sdk/location/
  */
 
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from 'react';
-import * as Location from 'expo-location';
-import { Alert, AppState, AppStateStatus, Linking } from 'react-native';
-import { Accelerometer } from 'expo-sensors';
-import { websocketService } from '../services/websocketService';
-import { startBackgroundLocationTracking, stopBackgroundLocationTracking } from '../services/backgroundLocationService';
-import { sendLocationUpdate } from '../services/locationTransport';
-import { geofenceService } from '../services/geofenceService';
-import type { GeofenceItem } from '../types/api';
 import Global from '@/constants/Global';
+import * as Location from 'expo-location';
+import { Accelerometer } from 'expo-sensors';
+import React, { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { Alert, AppState, AppStateStatus, Linking } from 'react-native';
+import { startBackgroundLocationTracking, stopBackgroundLocationTracking } from '../services/backgroundLocationService';
+import { geofenceService } from '../services/geofenceService';
+import { sendLocationUpdate } from '../services/locationTransport';
+import { websocketService } from '../services/websocketService';
+import { initializeNotifications, setupNotificationListeners, cleanupNotificationListeners } from '../services/notificationService';
+import type { GeofenceItem } from '../types/api';
 
 // 위치 데이터 타입
 export interface RealTimeLocation {
@@ -236,11 +237,21 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
       setError(null);
       setIsLoading(false);
 
-      // 백그라운드 위치 추적은 앱이 백그라운드로 갈 때 시작됨
-      // (포그라운드에서는 watchPositionAsync만 사용)
-
-      // 움직임 감지 시작 (배터리 최적화) - 이용자만
+      // 백그라운드 위치 추적 시작 (포그라운드에서 미리 시작해야 함!) - 이용자만
       if (Global.USER_ROLE === 'user') {
+        try {
+          console.log('📍 백그라운드 위치 서비스 시작 (포그라운드에서)');
+          const started = await startBackgroundLocationTracking();
+          if (started) {
+            console.log('✅ 백그라운드 위치 서비스 준비 완료');
+          } else {
+            console.warn('⚠️ 백그라운드 위치 서비스 시작 실패 (권한 또는 제한사항)');
+          }
+        } catch (error) {
+          console.warn('⚠️ 백그라운드 위치 서비스 시작 중 오류:', error);
+        }
+
+        // 움직임 감지 시작 (배터리 최적화)
         try {
           setupMovementDetection();
           console.log('✅ 배터리 최적화: 움직임 감지 시작');
@@ -404,6 +415,10 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
     supporterTargetRef.current = targetNumber;
     Global.TARGET_NUMBER = targetNumber;
     setTargetLocation(null);
+
+    // 선택한 이용자의 지오펜스 자동 로드
+    loadGeofences();
+
     if (isWebSocketConnected) {
       console.log(`👥 보호자 모드: ${targetNumber}의 위치 구독 시작`);
       subscribeToSupporterTarget(targetNumber);
@@ -414,19 +429,36 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
 
   /**
    * 지오펜스 목록 로드
+   * - 이용자: 본인의 지오펜스
+   * - 보호자: 선택한 이용자의 지오펜스 (Global.TARGET_NUMBER)
    */
   const loadGeofences = useCallback(async () => {
-    if (Global.USER_ROLE !== 'user') {
-      console.log('ℹ️ 지오펜스는 이용자 모드에서만 로드됨');
-      return;
-    }
-
     try {
-      const data = await geofenceService.getList();
+      let targetNumber: string | undefined;
+
+      if (Global.USER_ROLE === 'user') {
+        // 이용자: 본인 지오펜스 (targetNumber = undefined → API에서 Global.NUMBER 사용)
+        targetNumber = undefined;
+      } else if (Global.USER_ROLE === 'supporter') {
+        // 보호자: 선택한 이용자 지오펜스
+        if (!Global.TARGET_NUMBER) {
+          console.log('ℹ️ 보호자 모드: 이용자를 먼저 선택해주세요');
+          setGeofences([]); // 빈 배열로 초기화
+          return;
+        }
+        targetNumber = Global.TARGET_NUMBER;
+        console.log(`📍 보호자 모드: ${targetNumber}의 지오펜스 로드`);
+      } else {
+        console.log('ℹ️ 역할이 설정되지 않았습니다');
+        return;
+      }
+
+      const data = await geofenceService.getList(targetNumber);
       setGeofences(data);
-      console.log('✅ 지오펜스 목록 로드 성공:', data.length);
+      console.log(`✅ 지오펜스 목록 로드 성공: ${data.length}개 (${Global.USER_ROLE === 'supporter' ? `이용자: ${targetNumber}` : '본인'})`);
     } catch (error) {
       console.error('❌ 지오펜스 목록 로드 실패:', error);
+      setGeofences([]); // 에러 시 빈 배열
     }
   }, []);
 
@@ -488,18 +520,17 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
       try {
+        // inactive 상태는 무시 (잠깐 멈춤일 뿐)
+        if (nextAppState === 'inactive') {
+          appState.current = nextAppState;
+          return;
+        }
+
+        // 포그라운드 복귀: inactive 또는 background → active
         if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
           console.log('📱 앱이 포그라운드로 돌아옴');
 
-          // 백그라운드 Task 중지
-          if (Global.USER_ROLE === 'user') {
-            try {
-              await stopBackgroundLocationTracking();
-              console.log('⏸️ 백그라운드 Task 중지 (포그라운드 watchPositionAsync 사용)');
-            } catch (error) {
-              console.error('❌ 백그라운드 Task 중지 실패:', error);
-            }
-          }
+          // 백그라운드 Service는 계속 실행 (중지하지 않음)
 
           // watchPositionAsync 무조건 재시작 (포그라운드 복귀 시)
           console.log(`🔍 watchPositionAsync 이전 상태: ${locationSubscription.current ? '실행 중' : '중지됨'}`);
@@ -583,10 +614,9 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
             console.log('✅ 포그라운드 위치 전송 재개 (2초 주기)');
           }
 
-        } else if (nextAppState === 'inactive' || nextAppState === 'background') {
-          // inactive 또는 background 상태 (둘 다 처리)
-          const stateLabel = nextAppState === 'inactive' ? 'inactive' : 'background';
-          console.log(`📱 앱이 ${stateLabel} 상태로 전환`);
+        } else if (appState.current === 'active' && nextAppState === 'background') {
+          // 진짜 백그라운드 전환: active → background (inactive는 무시)
+          console.log('📱 앱이 background 상태로 전환');
 
           // 포그라운드 setInterval 중지
           if (websocketSendInterval.current) {
@@ -606,20 +636,8 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
             }
           }
 
-          // 백그라운드 Task 시작 (Development Build에서만 작동)
-          if (Global.USER_ROLE === 'user') {
-            try {
-              const started = await startBackgroundLocationTracking();
-              if (started) {
-                console.log('✅ 백그라운드 Task 시작 (15초 주기, WebSocket/HTTP 전송)');
-              } else {
-                console.warn('⚠️ Expo Go 제한: 백그라운드 위치 추적 불가능');
-                console.warn('   → Development Build 또는 Production Build 필요');
-              }
-            } catch (error: any) {
-              console.warn('⚠️ 백그라운드 Task 시작 실패 (Expo Go 제한)');
-            }
-          }
+          // 백그라운드 Service는 이미 실행 중 (아무것도 안 함)
+          console.log('ℹ️ 백그라운드 위치 서비스는 계속 실행 중');
         }
       } catch (error) {
         console.error('❌ AppState 변경 처리 중 오류:', error);
@@ -689,7 +707,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
       for (const fence of geofences) {
         // 1. 거리 체크
         const distance = calculateDistance(currentLat, currentLng, fence.latitude, fence.longitude);
-        const radius = 200; // 기본 반경 200미터
+        const radius = 100; // 기본 반경 200미터
         const isInside = distance <= radius;
 
         // 2. 시간 체크 (일시적 지오펜스만)
@@ -740,6 +758,26 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
       console.log('🔍 지오펜스 검사 중지');
     };
   }, [geofences]); // currentLocation 제거 - ref 사용으로 10초 주기 유지
+
+  /**
+   * 알림 초기화 (앱 시작 시)
+   */
+  useEffect(() => {
+    let notificationListeners: any = null;
+
+    const initNotifications = async () => {
+      await initializeNotifications();
+      notificationListeners = setupNotificationListeners();
+    };
+
+    initNotifications();
+
+    return () => {
+      if (notificationListeners) {
+        cleanupNotificationListeners(notificationListeners);
+      }
+    };
+  }, []);
 
   /**
    * 컴포넌트 언마운트 시 정리

@@ -101,8 +101,16 @@ apiClient.interceptors.response.use(
       }
     } else if (error.request) {
       // 요청은 보냈지만 응답을 받지 못함 (네트워크 오류)
-      console.error('네트워크 오류:', error.message);
-      Alert.alert('네트워크 오류', '서버와 연결할 수 없습니다. 네트워크 상태를 확인해주세요.');
+      console.error('=== 네트워크 오류 상세 ===');
+      console.error('URL:', error.config?.baseURL + error.config?.url);
+      console.error('Method:', error.config?.method);
+      console.error('Error Message:', error.message);
+      console.error('Error Code:', error.code);
+      console.error('========================');
+      Alert.alert(
+        '네트워크 오류',
+        `서버 연결 실패\nURL: ${error.config?.url}\n에러: ${error.message}`
+      );
     } else {
       // 요청 설정 중 오류 발생
       console.error('요청 설정 오류:', error.message);
