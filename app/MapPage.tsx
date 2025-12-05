@@ -1,5 +1,4 @@
 import Global from '@/constants/Global';
-import { customMapStyle } from '@/styles/MapPageStyles';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useLocation } from '../contexts/LocationContext';
@@ -20,12 +19,10 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import MapView, { Circle, Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps'; // Callout 추가
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomNavigation from '../components/BottomNavigation';
 import GeofenceModal from '../components/GeofenceModal';
-
-import CustomMarker from '../components/CustomMarker';
+import KakaoMap, { KakaoMapHandle } from '../components/KakaoMap';
 
 interface RealTimeLocation {
   latitude: number;
@@ -35,13 +32,7 @@ interface RealTimeLocation {
   speed?: number;
   heading?: number;
 }
-interface LocationTrackingState {
-  isTracking: boolean;
-  currentLocation: RealTimeLocation | null;
-  locationHistory: RealTimeLocation[];
-  error: string | null;
-  isLoading: boolean;
-}
+
 interface UserLocation {
   lat: number;
   lng: number;
@@ -63,7 +54,7 @@ const MainPage: React.FC = () => {
   } = useLocation();
 
   const router = useRouter();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<KakaoMapHandle>(null);
 
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [isGeofenceModalVisible, setIsGeofenceModalVisible] = useState(false);
@@ -71,12 +62,7 @@ const MainPage: React.FC = () => {
   const [initialRegion, setInitialRegion] = useState<Region | null>(null);
 
   const moveToLocation = useCallback((location: RealTimeLocation) => {
-    mapRef.current?.animateToRegion({
-      latitude: location.latitude,
-      longitude: location.longitude,
-      latitudeDelta: 0.0005,
-      longitudeDelta: 0.0005,
-    }, 1000);
+    mapRef.current?.moveToLocation(location.latitude, location.longitude);
   }, []);
 
   // 역할 설정은 1회만 (로그 중복 방지)
@@ -257,7 +243,7 @@ const MainPage: React.FC = () => {
     return `약 ${diffDays}일 전`;
   };
 
-  const getLocationFreshnessMessage = () => {
+  const getLocationFreshnessMessage = (): string | null => {
     const location = userRole === 'supporter' ? targetLocation : currentLocation;
     if (!location?.timestamp) return null;
 
@@ -366,8 +352,14 @@ const MainPage: React.FC = () => {
     <View className="flex-1 bg-green-50">
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
 
-      <MapView
+      <KakaoMap
         ref={mapRef}
+        currentLocation={currentLocation}
+        targetLocation={targetLocation}
+        geofences={geofences}
+        userRole={userRole} 
+        onGeofenceDelete={handleGeofenceDelete}
+      />
         provider={PROVIDER_GOOGLE}
         style={{ flex: 1 }}
         initialRegion={

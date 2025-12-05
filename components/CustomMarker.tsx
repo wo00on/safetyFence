@@ -51,7 +51,7 @@ const CustomMarker: React.FC<CustomMarkerProps> = ({ coordinate, name, status })
       {/* collapsable={false} to prevent render bugs on some devices */}
       <View collapsable={false}>
         <Animated.View style={animatedStyle}>
-          <MapPin size={35} color="#16a34a" fill="#6ee7b7" />
+          <MapPin size={37} color="#80ffaeff" fill="#6ee7b7" />
         </Animated.View>
       </View>
 
