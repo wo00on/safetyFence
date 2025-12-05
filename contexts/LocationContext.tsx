@@ -27,6 +27,7 @@ import { startBackgroundLocationTracking, stopBackgroundLocationTracking } from 
 import { geofenceService } from '../services/geofenceService';
 import { sendLocationUpdate } from '../services/locationTransport';
 import { websocketService } from '../services/websocketService';
+import { initializeNotifications, setupNotificationListeners, cleanupNotificationListeners } from '../services/notificationService';
 import type { GeofenceItem } from '../types/api';
 
 // 위치 데이터 타입
@@ -236,11 +237,21 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
       setError(null);
       setIsLoading(false);
 
-      // 백그라운드 위치 추적은 앱이 백그라운드로 갈 때 시작됨
-      // (포그라운드에서는 watchPositionAsync만 사용)
-
-      // 움직임 감지 시작 (배터리 최적화) - 이용자만
+      // 백그라운드 위치 추적 시작 (포그라운드에서 미리 시작해야 함!) - 이용자만
       if (Global.USER_ROLE === 'user') {
+        try {
+          console.log('📍 백그라운드 위치 서비스 시작 (포그라운드에서)');
+          const started = await startBackgroundLocationTracking();
+          if (started) {
+            console.log('✅ 백그라운드 위치 서비스 준비 완료');
+          } else {
+            console.warn('⚠️ 백그라운드 위치 서비스 시작 실패 (권한 또는 제한사항)');
+          }
+        } catch (error) {
+          console.warn('⚠️ 백그라운드 위치 서비스 시작 중 오류:', error);
+        }
+
+        // 움직임 감지 시작 (배터리 최적화)
         try {
           setupMovementDetection();
           console.log('✅ 배터리 최적화: 움직임 감지 시작');
@@ -509,18 +520,17 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
       try {
+        // inactive 상태는 무시 (잠깐 멈춤일 뿐)
+        if (nextAppState === 'inactive') {
+          appState.current = nextAppState;
+          return;
+        }
+
+        // 포그라운드 복귀: inactive 또는 background → active
         if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
           console.log('📱 앱이 포그라운드로 돌아옴');
 
-          // 백그라운드 Task 중지
-          if (Global.USER_ROLE === 'user') {
-            try {
-              await stopBackgroundLocationTracking();
-              console.log('⏸️ 백그라운드 Task 중지 (포그라운드 watchPositionAsync 사용)');
-            } catch (error) {
-              console.error('❌ 백그라운드 Task 중지 실패:', error);
-            }
-          }
+          // 백그라운드 Service는 계속 실행 (중지하지 않음)
 
           // watchPositionAsync 무조건 재시작 (포그라운드 복귀 시)
           console.log(`🔍 watchPositionAsync 이전 상태: ${locationSubscription.current ? '실행 중' : '중지됨'}`);
@@ -604,10 +614,9 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
             console.log('✅ 포그라운드 위치 전송 재개 (2초 주기)');
           }
 
-        } else if (nextAppState === 'inactive' || nextAppState === 'background') {
-          // inactive 또는 background 상태 (둘 다 처리)
-          const stateLabel = nextAppState === 'inactive' ? 'inactive' : 'background';
-          console.log(`📱 앱이 ${stateLabel} 상태로 전환`);
+        } else if (appState.current === 'active' && nextAppState === 'background') {
+          // 진짜 백그라운드 전환: active → background (inactive는 무시)
+          console.log('📱 앱이 background 상태로 전환');
 
           // 포그라운드 setInterval 중지
           if (websocketSendInterval.current) {
@@ -627,20 +636,8 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
             }
           }
 
-          // 백그라운드 Task 시작 (Development Build에서만 작동)
-          if (Global.USER_ROLE === 'user') {
-            try {
-              const started = await startBackgroundLocationTracking();
-              if (started) {
-                console.log('✅ 백그라운드 Task 시작 (15초 주기, WebSocket/HTTP 전송)');
-              } else {
-                console.warn('⚠️ Expo Go 제한: 백그라운드 위치 추적 불가능');
-                console.warn('   → Development Build 또는 Production Build 필요');
-              }
-            } catch (error: any) {
-              console.warn('⚠️ 백그라운드 Task 시작 실패 (Expo Go 제한)');
-            }
-          }
+          // 백그라운드 Service는 이미 실행 중 (아무것도 안 함)
+          console.log('ℹ️ 백그라운드 위치 서비스는 계속 실행 중');
         }
       } catch (error) {
         console.error('❌ AppState 변경 처리 중 오류:', error);
@@ -761,6 +758,26 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
       console.log('🔍 지오펜스 검사 중지');
     };
   }, [geofences]); // currentLocation 제거 - ref 사용으로 10초 주기 유지
+
+  /**
+   * 알림 초기화 (앱 시작 시)
+   */
+  useEffect(() => {
+    let notificationListeners: any = null;
+
+    const initNotifications = async () => {
+      await initializeNotifications();
+      notificationListeners = setupNotificationListeners();
+    };
+
+    initNotifications();
+
+    return () => {
+      if (notificationListeners) {
+        cleanupNotificationListeners(notificationListeners);
+      }
+    };
+  }, []);
 
   /**
    * 컴포넌트 언마운트 시 정리

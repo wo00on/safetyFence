@@ -61,18 +61,30 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }: any) =>
  */
 export const startBackgroundLocationTracking = async (): Promise<boolean> => {
   try {
+    console.log('🔍 백그라운드 위치 추적 시작 시도...');
+
+    // Task 등록 확인
+    const isTaskDefined = await TaskManager.isTaskDefined(BACKGROUND_LOCATION_TASK);
+    console.log(`🔍 Task 정의 여부: ${isTaskDefined}`);
+
     // 백그라운드 권한 확인
-    const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
+    const { status: foregroundStatus } = await Location.getForegroundPermissionsAsync();
+    console.log(`🔍 포그라운드 권한: ${foregroundStatus}`);
+
     if (foregroundStatus !== 'granted') {
       console.error('❌ 포그라운드 위치 권한이 필요합니다.');
       return false;
     }
 
-    const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+    const { status: backgroundStatus } = await Location.getBackgroundPermissionsAsync();
+    console.log(`🔍 백그라운드 권한: ${backgroundStatus}`);
+
     if (backgroundStatus !== 'granted') {
       console.error('❌ 백그라운드 위치 권한이 필요합니다.');
       return false;
     }
+
+    console.log('🔍 Location.startLocationUpdatesAsync 호출 중...');
 
     // 백그라운드 위치 추적 시작
     await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
@@ -88,16 +100,29 @@ export const startBackgroundLocationTracking = async (): Promise<boolean> => {
       showsBackgroundLocationIndicator: true, // iOS에서 백그라운드 위치 표시
     });
 
-    console.log('✅ 백그라운드 위치 추적 시작');
+    console.log('✅ Location.startLocationUpdatesAsync 성공');
+
+    // 등록 확인
+    const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_LOCATION_TASK);
+    console.log(`✅ Task 등록 확인: ${isRegistered}`);
+
+    console.log('✅ 백그라운드 위치 추적 시작 완료');
     return true;
   } catch (error: any) {
+    console.error('❌ 백그라운드 위치 추적 에러 발생:', {
+      message: error?.message,
+      code: error?.code,
+      error: error,
+    });
+
     // Expo Go 제한사항: 백그라운드 위치 추적 불가능
     // Development Build에서는 정상 작동
     const isExpoGoLimitation = error?.message?.includes('Foreground service cannot be started');
     if (isExpoGoLimitation) {
-      // Expo Go 제한사항은 조용히 처리 (예상된 동작)
+      console.log('ℹ️ Expo Go 제한사항 (예상된 동작)');
       return false;
     }
+
     // 다른 에러는 실제 문제일 수 있으므로 로그
     console.warn('⚠️ 백그라운드 위치 추적 시작 실패:', error?.message || error);
     return false;

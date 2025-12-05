@@ -156,7 +156,12 @@ const MyPage: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await geofenceService.delete({ id: geofenceId });
+              // 보호자인 경우 TARGET_NUMBER 전달
+              const targetNumber = Global.USER_ROLE === 'supporter' && Global.TARGET_NUMBER
+                ? Global.TARGET_NUMBER
+                : undefined;
+
+              await geofenceService.delete({ id: geofenceId }, targetNumber);
               Alert.alert('성공', '선택한 영역이 삭제되었습니다.');
               fetchUserData(); // 데이터 새로고침
             } catch (error) {
