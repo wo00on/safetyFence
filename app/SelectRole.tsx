@@ -84,10 +84,10 @@ export default function SelectRolePage() {
                 />
               </View>
               <View className="flex-1">
-                <Text className={`text-lg font-bold mb-1 ${selectedRole === 'user' ? 'text-green-800' : 'text-gray-900'}`}>
+                <Text className={`text-2xl font-bold mb-2 ${selectedRole === 'user' ? 'text-green-800' : 'text-gray-900'}`}>
                   이용자
                 </Text>
-                <Text className="text-sm text-gray-500 leading-5">
+                <Text className="text-lg text-gray-500 leading-6">
                   서비스를 직접 이용하는{'\n'}노인 이용자
                 </Text>
               </View>
@@ -115,10 +115,10 @@ export default function SelectRolePage() {
                 />
               </View>
               <View className="flex-1">
-                <Text className={`text-lg font-bold mb-1 ${selectedRole === 'supporter' ? 'text-green-800' : 'text-gray-900'}`}>
+                <Text className={`text-2xl font-bold mb-2 ${selectedRole === 'supporter' ? 'text-green-800' : 'text-gray-900'}`}>
                   보호자
                 </Text>
-                <Text className="text-sm text-gray-500 leading-5">
+                <Text className="text-lg text-gray-500 leading-6">
                   이용자를 돌보는{'\n'}가족 또는 보호자
                 </Text>
               </View>
